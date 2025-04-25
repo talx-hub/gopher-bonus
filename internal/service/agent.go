@@ -13,17 +13,24 @@ import (
 )
 
 type Agent struct {
-	ordersCh    <-chan uint64
-	responsesCh chan<- model.DTOAccrualCalculator
+	ordersCh       <-chan uint64
+	responsesCh    chan<- model.DTOAccrualCalculator
+	client         http.Client
+	accrualAddress string
 }
 
 func New(
 	ordersCh <-chan uint64,
 	responsesCh chan<- model.DTOAccrualCalculator,
+	accrualAddress string,
 ) *Agent {
 	return &Agent{
 		ordersCh:    ordersCh,
 		responsesCh: responsesCh,
+		client: http.Client{
+			Timeout: model.DefaultTimeout,
+		},
+		accrualAddress: accrualAddress,
 	}
 }
 
@@ -63,12 +70,13 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 			<-timer.C
 			sema.ChangeMaxRequestsCount(currentRPM.Load(), rateData.rpm)
 		case orderNo := <-a.ordersCh:
+			wg.Add(1)
 			go func() {
-				wg.Add(1)
+				defer wg.Done()
 				sema.Acquire()
 				defer sema.Release()
 
-				data, err := a.requestAccrual(orderNo, &wg)
+				data, err := a.requestAccrual(strconv.FormatUint(orderNo, 10))
 				requestCount.Add(1)
 				var tmrErr *serviceerrs.TooManyRequestsError
 				if err != nil && errors.As(err, &tmrErr) {
@@ -82,9 +90,29 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 	}
 }
 
-func (a *Agent) requestAccrual(orderNo uint64, wg *sync.WaitGroup,
+func (a *Agent) requestAccrual(orderNo string,
 ) (model.DTOAccrualCalculator, error) {
-	defer wg.Done()
+	path, err := url.JoinPath(a.accrualAddress, "/api/orders/", orderNo)
+	if err != nil {
+		return model.DTOAccrualCalculator{},
+			fmt.Errorf("url join error: %w", err)
+	}
 
-	return model.DTOAccrualCalculator{}, nil
+	resp, err := a.client.Get(path)
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			// TODO: log
+		}
+	}()
+	if err != nil {
+		return model.DTOAccrualCalculator{},
+			fmt.Errorf("request accrual error: %w", err)
+	}
+
+	data := model.DTOAccrualCalculator{}
+	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return model.DTOAccrualCalculator{},
+			fmt.Errorf("request decoding error: %w", err)
+	}
+	return data, nil
 }
