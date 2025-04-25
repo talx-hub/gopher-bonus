@@ -2,7 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -42,6 +47,7 @@ type requestRateData struct {
 func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 	var currentRPM atomic.Uint64
 	var requestCount atomic.Uint64
+	var stopRequestsFlag atomic.Bool
 	go func() {
 		for {
 			select {
@@ -69,6 +75,7 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 			timer := time.NewTimer(rateData.timeToSleep)
 			<-timer.C
 			sema.ChangeMaxRequestsCount(currentRPM.Load(), rateData.rpm)
+			stopRequestsFlag.Store(false)
 		case orderNo := <-a.ordersCh:
 			wg.Add(1)
 			go func() {
@@ -80,9 +87,15 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 				requestCount.Add(1)
 				var tmrErr *serviceerrs.TooManyRequestsError
 				if err != nil && errors.As(err, &tmrErr) {
-					stopRequests <- requestRateData{
-						tmrErr.TimeToSleep, tmrErr.RPM}
+					if !stopRequestsFlag.CompareAndSwap(false, true) {
+						// TODO: log
+						stopRequests <- requestRateData{
+							tmrErr.TimeToSleep, tmrErr.RPM}
+					}
 					return
+				}
+				if err != nil {
+					// TODO: log
 				}
 				a.responsesCh <- data
 			}()
