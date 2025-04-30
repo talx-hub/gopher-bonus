@@ -2,11 +2,8 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -17,25 +14,25 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
+type AccrualClient interface {
+	GetOrderInfo(orderID string) (model.DTOAccrualCalculator, error)
+}
+
 type Agent struct {
-	ordersCh       <-chan uint64
-	responsesCh    chan<- model.DTOAccrualCalculator
-	client         http.Client
-	accrualAddress string
+	ordersCh    chan uint64
+	responsesCh chan<- model.DTOAccrualCalculator
+	client      AccrualClient
 }
 
 func New(
-	ordersCh <-chan uint64,
+	ordersCh chan uint64,
 	responsesCh chan<- model.DTOAccrualCalculator,
 	accrualAddress string,
 ) *Agent {
 	return &Agent{
 		ordersCh:    ordersCh,
 		responsesCh: responsesCh,
-		client: http.Client{
-			Timeout: model.DefaultTimeout,
-		},
-		accrualAddress: accrualAddress,
+		client:      newCustomClient(accrualAddress),
 	}
 }
 
@@ -45,25 +42,15 @@ type requestRateData struct {
 }
 
 func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
-	var currentRPM atomic.Uint64
 	var requestCount atomic.Uint64
-	var stopRequestsFlag atomic.Bool
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				timer := time.NewTimer(1 * time.Minute)
-				<-timer.C
-				currentRPM.Store(requestCount.Swap(0))
-			}
-		}
-	}()
 
 	var wg sync.WaitGroup
 	sema := semaphore.New(maxRequestCount)
-	var stopRequests chan requestRateData
+	stopRequests := make(chan requestRateData)
+	var stopRequestsFlag atomic.Bool
+	startEpoch := time.Now()
+	var timer *time.Timer
+	rateData := requestRateData{}
 	for {
 		select {
 		case <-ctx.Done():
@@ -71,10 +58,10 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 			close(a.responsesCh)
 			close(stopRequests)
 			return
-		case rateData := <-stopRequests:
-			timer := time.NewTimer(rateData.timeToSleep)
-			<-timer.C
-			sema.ChangeMaxRequestsCount(currentRPM.Load(), rateData.rpm)
+		case rateData = <-stopRequests:
+			timer = time.NewTimer(rateData.timeToSleep)
+		case <-timer.C:
+			sema.ChangeMaxRequestsCount(requestCount.Load(), startEpoch, rateData.rpm)
 			stopRequestsFlag.Store(false)
 		case orderNo := <-a.ordersCh:
 			wg.Add(1)
@@ -83,49 +70,26 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
 				sema.Acquire()
 				defer sema.Release()
 
-				data, err := a.requestAccrual(strconv.FormatUint(orderNo, 10))
 				requestCount.Add(1)
-				var tmrErr *serviceerrs.TooManyRequestsError
-				if err != nil && errors.As(err, &tmrErr) {
-					if !stopRequestsFlag.CompareAndSwap(false, true) {
-						// TODO: log
-						stopRequests <- requestRateData{
-							tmrErr.TimeToSleep, tmrErr.RPM}
-					}
-					return
-				}
+				data, err := a.client.GetOrderInfo(strconv.FormatUint(orderNo, 10))
 				if err != nil {
 					// TODO: log
+					fmt.Println(err)
+
+					needToNotify := !stopRequestsFlag.CompareAndSwap(false, true)
+					var tmrErr *serviceerrs.TooManyRequestsError
+					if needToNotify && errors.As(err, &tmrErr) {
+						stopRequests <- requestRateData{
+							tmrErr.RetryAfter,
+							tmrErr.RPM,
+						}
+					}
+					a.ordersCh <- orderNo
+					return
 				}
+
 				a.responsesCh <- data
 			}()
 		}
 	}
-}
-
-func (a *Agent) requestAccrual(orderNo string,
-) (model.DTOAccrualCalculator, error) {
-	path, err := url.JoinPath(a.accrualAddress, "/api/orders/", orderNo)
-	if err != nil {
-		return model.DTOAccrualCalculator{},
-			fmt.Errorf("url join error: %w", err)
-	}
-
-	resp, err := a.client.Get(path)
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			// TODO: log
-		}
-	}()
-	if err != nil {
-		return model.DTOAccrualCalculator{},
-			fmt.Errorf("request accrual error: %w", err)
-	}
-
-	data := model.DTOAccrualCalculator{}
-	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return model.DTOAccrualCalculator{},
-			fmt.Errorf("request decoding error: %w", err)
-	}
-	return data, nil
 }
