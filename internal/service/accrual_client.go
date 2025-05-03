@@ -28,7 +28,7 @@ func newCustomClient(accrualAddress string) *customClient {
 }
 
 func (c *customClient) GetOrderInfo(orderID string,
-) (model.DTOAccrualCalculator, error) {
+) (model.DTOAccrualInfo, error) {
 	u := url.URL{
 		Scheme: "http",
 		Host:   c.accrualAddress,
@@ -37,7 +37,7 @@ func (c *customClient) GetOrderInfo(orderID string,
 
 	resp, err := c.httpClient.Get(u.String())
 	if err != nil {
-		return model.DTOAccrualCalculator{},
+		return model.DTOAccrualInfo{},
 			fmt.Errorf("request accrual error: %w", err)
 	}
 	body, err := io.ReadAll(resp.Body)
@@ -47,7 +47,7 @@ func (c *customClient) GetOrderInfo(orderID string,
 		}
 	}()
 	if err != nil {
-		return model.DTOAccrualCalculator{},
+		return model.DTOAccrualInfo{},
 			fmt.Errorf("request read body error: %w", err)
 	}
 
@@ -60,41 +60,41 @@ func (c *customClient) GetOrderInfo(orderID string,
 }
 
 func (c *customClient) handleRequestData(resp *http.Response, body []byte,
-) (model.DTOAccrualCalculator, error) {
+) (model.DTOAccrualInfo, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if ct := resp.Header.Get(model.HeaderContentType); ct != "application/json" {
-			return model.DTOAccrualCalculator{},
+			return model.DTOAccrualInfo{},
 				fmt.Errorf("unexpected content type %s", ct)
 		}
-		data := model.DTOAccrualCalculator{}
+		data := model.DTOAccrualInfo{}
 		if err := json.Unmarshal(body, &data); err != nil {
-			return model.DTOAccrualCalculator{},
+			return model.DTOAccrualInfo{},
 				fmt.Errorf("request decoding error: %w", err)
 		}
 		return data, nil
 	case http.StatusNoContent:
-		return model.DTOAccrualCalculator{},
+		return model.DTOAccrualInfo{},
 			errors.New("no content for this order")
 	case http.StatusTooManyRequests:
 		retryAfter := resp.Header.Get("Retry-After")
 		if retryAfter == "" {
-			return model.DTOAccrualCalculator{},
+			return model.DTOAccrualInfo{},
 				errors.New("empty retry-after value")
 		}
 		ra, err := strconv.Atoi(retryAfter)
 		if err != nil {
-			return model.DTOAccrualCalculator{},
+			return model.DTOAccrualInfo{},
 				fmt.Errorf("retry after atoi failed: %w", err)
 		}
 
 		rpm, err := c.parseTooManyRequestsBody(body)
 		if err != nil {
-			return model.DTOAccrualCalculator{},
+			return model.DTOAccrualInfo{},
 				fmt.Errorf("failed to parse N requests allowed: %w", err)
 		}
 
-		return model.DTOAccrualCalculator{},
+		return model.DTOAccrualInfo{},
 			&serviceerrs.TooManyRequestsError{
 				RetryAfter: time.Duration(ra) * time.Second,
 				RPM:        rpm,
@@ -105,7 +105,7 @@ func (c *customClient) handleRequestData(resp *http.Response, body []byte,
 	}
 
 	// TODO: log
-	return model.DTOAccrualCalculator{},
+	return model.DTOAccrualInfo{},
 		fmt.Errorf("unexpected status: %d\nBody: %s", resp.StatusCode, string(body))
 }
 

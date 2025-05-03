@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/service"
 	"os"
 	"sync"
+
+	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/service"
 )
 
 func main() {
 	inputCh := make(chan uint64)
-	outputCh := make(chan model.DTOAccrualCalculator)
+	outputCh := make(chan model.DTOAccrualInfo)
 	a := service.New(inputCh, outputCh, "127.0.0.1:8080")
 	var wg sync.WaitGroup
 	wg.Add(3)

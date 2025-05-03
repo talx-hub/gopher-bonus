@@ -7,7 +7,7 @@ const (
 	StatusCalculatorProcessed  string = "PROCESSED"
 )
 
-type DTOAccrualCalculator struct {
+type DTOAccrualInfo struct {
 	Order   string `json:"order"`
 	Status  string `json:"status"`
 	Accrual int    `json:"accrual,omitempty"`
