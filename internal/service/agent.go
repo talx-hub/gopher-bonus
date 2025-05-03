@@ -2,37 +2,32 @@ package service
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"strconv"
+	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
-	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
 type AccrualClient interface {
-	GetOrderInfo(orderID string) (model.DTOAccrualCalculator, error)
+	GetOrderInfo(orderID string) (model.DTOAccrualInfo, error)
 }
 
 type Agent struct {
-	ordersCh    chan uint64
-	responsesCh chan<- model.DTOAccrualCalculator
 	client      AccrualClient
+	ordersCh    chan uint64
+	responsesCh chan<- model.DTOAccrualInfo
 }
 
 func New(
 	ordersCh chan uint64,
-	responsesCh chan<- model.DTOAccrualCalculator,
+	responsesCh chan<- model.DTOAccrualInfo,
 	accrualAddress string,
 ) *Agent {
 	return &Agent{
+		client:      newCustomClient(accrualAddress),
 		ordersCh:    ordersCh,
 		responsesCh: responsesCh,
-		client:      newCustomClient(accrualAddress),
 	}
 }
 
@@ -41,55 +36,46 @@ type requestRateData struct {
 	rpm         uint64
 }
 
-func (a *Agent) Run(ctx context.Context, maxRequestCount int) {
-	var requestCount atomic.Uint64
+func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
+	requestsCh := make(chan struct{}, runtime.NumCPU()*model.DefaultWorkerCountMultiplier)
+	watcher := newRequestWatcher(requestsCh)
+	watcher.Start()
 
-	var wg sync.WaitGroup
-	sema := semaphore.New(maxRequestCount)
-	stopRequests := make(chan requestRateData)
-	var stopRequestsFlag atomic.Bool
-	startEpoch := time.Now()
-	var timer *time.Timer
+	wg := &sync.WaitGroup{}
+	rateDataCh := make(chan requestRateData)
+	pool := NewWorkerPool(
+		a.client,
+		wg,
+		a.ordersCh,
+		rateDataCh,
+		requestsCh,
+		a.responsesCh,
+	)
+	poolCancel := pool.Start(ctx, maxRequestCount)
+
 	rateData := requestRateData{}
+	var timer *time.Timer
 	for {
 		select {
 		case <-ctx.Done():
+			poolCancel()
 			wg.Wait()
+			close(rateDataCh)
 			close(a.responsesCh)
-			close(stopRequests)
+			close(rateDataCh)
 			return
-		case rateData = <-stopRequests:
+		case rateData = <-rateDataCh:
+			watcher.Stop()
 			timer = time.NewTimer(rateData.timeToSleep)
 		case <-timer.C:
-			sema.ChangeMaxRequestsCount(requestCount.Load(), startEpoch, rateData.rpm)
-			stopRequestsFlag.Store(false)
-		case orderNo := <-a.ordersCh:
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				sema.Acquire()
-				defer sema.Release()
+			currRPM := watcher.GetRPM()
+			newMaxRequestCount := maxRequestCount
+			if currRPM != 0 {
+				newMaxRequestCount = rateData.rpm / currRPM
+			}
 
-				requestCount.Add(1)
-				data, err := a.client.GetOrderInfo(strconv.FormatUint(orderNo, 10))
-				if err != nil {
-					// TODO: log
-					fmt.Println(err)
-
-					needToNotify := !stopRequestsFlag.CompareAndSwap(false, true)
-					var tmrErr *serviceerrs.TooManyRequestsError
-					if needToNotify && errors.As(err, &tmrErr) {
-						stopRequests <- requestRateData{
-							tmrErr.RetryAfter,
-							tmrErr.RPM,
-						}
-					}
-					a.ordersCh <- orderNo
-					return
-				}
-
-				a.responsesCh <- data
-			}()
+			watcher.Start()
+			poolCancel = pool.Start(ctx, newMaxRequestCount)
 		}
 	}
 }
