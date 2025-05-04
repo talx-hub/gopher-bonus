@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math"
 	"time"
 )
 
@@ -43,7 +44,12 @@ func (w *requestWatcher) Stop() {
 }
 
 func (w *requestWatcher) GetRPM() uint64 {
-	interval := w.stopTime.Sub(w.startTime)
-	rpmCurr := float64(w.requestCount) / interval.Minutes()
+	interval := w.stopTime.Sub(w.startTime).Minutes()
+	const tolerance = 0.001
+	if math.Abs(interval-0.0) < tolerance {
+		// TODO: log.Error()
+		return uint64(float64(w.requestCount) / tolerance)
+	}
+	rpmCurr := float64(w.requestCount) / interval
 	return uint64(rpmCurr) // округляем в меньшую сторону -> не переборщим с количеством запросов
 }
