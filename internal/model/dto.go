@@ -1,10 +1,14 @@
 package model
 
+type AccrualStatus string
+
 const (
-	StatusCalculatorRegistered string = "REGISTERED"
-	StatusCalculatorInvalid    string = "INVALID"
-	StatusCalculatorProcessing string = "PROCESSING"
-	StatusCalculatorProcessed  string = "PROCESSED"
+	StatusCalculatorRegistered AccrualStatus = "REGISTERED"
+	StatusCalculatorInvalid    AccrualStatus = "INVALID"
+	StatusCalculatorProcessing AccrualStatus = "PROCESSING"
+	StatusCalculatorProcessed  AccrualStatus = "PROCESSED"
+	StatusCalculatorFailed     AccrualStatus = "CALCULATOR_FAILED"
+	StatusAgentFailed          AccrualStatus = "AGENT_FAILED"
 )
 
 type DTOAccrualInfo struct {

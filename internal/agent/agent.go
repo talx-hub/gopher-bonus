@@ -1,4 +1,4 @@
-package service
+package agent
 
 import (
 	"context"
@@ -6,17 +6,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/requestwatcher"
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool"
 	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
-type AccrualClient interface {
-	GetOrderInfo(orderID string) (model.DTOAccrualInfo, error)
-}
-
 type Agent struct {
-	client      AccrualClient
-	ordersCh    chan uint64
-	responsesCh chan<- model.DTOAccrualInfo
+	accrualAddress string
+	ordersCh       chan uint64
+	responsesCh    chan<- model.DTOAccrualInfo
 }
 
 func New(
@@ -25,26 +24,21 @@ func New(
 	accrualAddress string,
 ) *Agent {
 	return &Agent{
-		client:      newCustomClient(accrualAddress),
-		ordersCh:    ordersCh,
-		responsesCh: responsesCh,
+		accrualAddress: accrualAddress,
+		ordersCh:       ordersCh,
+		responsesCh:    responsesCh,
 	}
-}
-
-type requestRateData struct {
-	timeToSleep time.Duration
-	rpm         uint64
 }
 
 func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 	requestsCh := make(chan struct{}, runtime.NumCPU()*model.DefaultWorkerCountMultiplier)
-	watcher := newRequestWatcher(requestsCh)
+	watcher := requestwatcher.New(requestsCh)
 	watcher.Start()
 
 	wg := &sync.WaitGroup{}
-	rateDataCh := make(chan requestRateData)
-	pool := NewWorkerPool(
-		a.client,
+	rateDataCh := make(chan serviceerrs.TooManyRequestsError)
+	pool := workerpool.New(
+		a.accrualAddress,
 		wg,
 		a.ordersCh,
 		rateDataCh,
@@ -53,7 +47,7 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 	)
 	poolCancel := pool.Start(ctx, maxRequestCount)
 
-	rateData := requestRateData{}
+	rateData := serviceerrs.TooManyRequestsError{}
 	var timer *time.Timer
 	defer func() {
 		if timer != nil {
@@ -72,12 +66,12 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			return
 		case rateData = <-rateDataCh:
 			watcher.Stop()
-			timer = time.NewTimer(rateData.timeToSleep)
+			timer = time.NewTimer(rateData.RetryAfter)
 		case <-timer.C:
 			currRPM := watcher.GetRPM()
 			newMaxRequestCount := maxRequestCount
 			if currRPM != 0 {
-				newMaxRequestCount = rateData.rpm / currRPM
+				newMaxRequestCount = rateData.RPM / currRPM
 			}
 
 			watcher.Start()

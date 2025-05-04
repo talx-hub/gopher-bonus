@@ -1,4 +1,4 @@
-package service
+package httpclient
 
 import (
 	"encoding/json"
@@ -15,19 +15,19 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
-type customClient struct {
-	httpClient     http.Client
+type HTTPClient struct {
+	client         http.Client
 	accrualAddress string
 }
 
-func newCustomClient(accrualAddress string) *customClient {
-	return &customClient{
-		httpClient:     http.Client{Timeout: model.DefaultTimeout},
+func New(accrualAddress string) *HTTPClient {
+	return &HTTPClient{
+		client:         http.Client{Timeout: model.DefaultTimeout},
 		accrualAddress: accrualAddress,
 	}
 }
 
-func (c *customClient) GetOrderInfo(orderID string,
+func (c *HTTPClient) GetOrderInfo(orderID string,
 ) (model.DTOAccrualInfo, error) {
 	u := url.URL{
 		Scheme: "http",
@@ -35,7 +35,7 @@ func (c *customClient) GetOrderInfo(orderID string,
 		Path:   fmt.Sprintf("/api/orders/%s", orderID),
 	}
 
-	resp, err := c.httpClient.Get(u.String())
+	resp, err := c.client.Get(u.String())
 	if err != nil {
 		return model.DTOAccrualInfo{},
 			fmt.Errorf("request accrual error: %w", err)
@@ -59,7 +59,7 @@ func (c *customClient) GetOrderInfo(orderID string,
 	return data, fmt.Errorf("request accrual failed: %w", err)
 }
 
-func (c *customClient) handleRequestData(resp *http.Response, body []byte,
+func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
 ) (model.DTOAccrualInfo, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
@@ -109,7 +109,7 @@ func (c *customClient) handleRequestData(resp *http.Response, body []byte,
 		fmt.Errorf("unexpected status: %d\nBody: %s", resp.StatusCode, string(body))
 }
 
-func (c *customClient) parseTooManyRequestsBody(b []byte) (uint64, error) {
+func (c *HTTPClient) parseTooManyRequestsBody(b []byte) (uint64, error) {
 	msg := string(b)
 	const prefix = "No more than "
 	const suffix = " requests per minute allowed"

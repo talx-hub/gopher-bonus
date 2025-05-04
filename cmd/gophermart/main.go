@@ -6,14 +6,14 @@ import (
 	"os"
 	"sync"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent"
 	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/service"
 )
 
 func main() {
 	inputCh := make(chan uint64)
 	outputCh := make(chan model.DTOAccrualInfo)
-	a := service.New(inputCh, outputCh, "127.0.0.1:8080")
+	a := agent.New(inputCh, outputCh, "127.0.0.1:8080")
 	var wg sync.WaitGroup
 	wg.Add(3)
 

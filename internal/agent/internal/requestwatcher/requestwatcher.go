@@ -1,4 +1,4 @@
-package service
+package requestwatcher
 
 import (
 	"math"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type requestWatcher struct {
+type RequestWatcher struct {
 	requestsCh   <-chan struct{}
 	stop         chan struct{}
 	stopOnce     sync.Once
@@ -15,13 +15,13 @@ type requestWatcher struct {
 	stopTime     time.Time
 }
 
-func newRequestWatcher(requestsCh <-chan struct{}) *requestWatcher {
-	return &requestWatcher{
+func New(requestsCh <-chan struct{}) *RequestWatcher {
+	return &RequestWatcher{
 		requestsCh: requestsCh,
 	}
 }
 
-func (w *requestWatcher) Start() {
+func (w *RequestWatcher) Start() {
 	w.startTime = time.Now()
 	w.requestCount = 0
 	w.stopOnce = sync.Once{}
@@ -43,13 +43,13 @@ func (w *requestWatcher) Start() {
 	}()
 }
 
-func (w *requestWatcher) Stop() {
+func (w *RequestWatcher) Stop() {
 	w.stopOnce.Do(func() {
 		close(w.stop)
 	})
 }
 
-func (w *requestWatcher) GetRPM() uint64 {
+func (w *RequestWatcher) GetRPM() uint64 {
 	interval := w.stopTime.Sub(w.startTime).Minutes()
 	const tolerance = 0.001
 	if math.Abs(interval-0.0) < tolerance {
