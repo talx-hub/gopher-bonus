@@ -52,13 +52,17 @@ func (w *WorkerPool) Start(ctx context.Context, maxRequestCount uint64) context.
 	return workerCancel
 }
 
-func (w *WorkerPool) Run(ctx context.Context, notifyAll context.CancelFunc) {
+func (w *WorkerPool) Run(ctx context.Context, cancelAll context.CancelFunc) {
+	defer w.wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
-			w.wg.Done()
 			return
-		case orderID := <-w.jobs:
+		case orderID, ok := <-w.jobs:
+			if !ok {
+				return
+			}
 			w.requestCounter <- struct{}{}
 			if err := w.sema.AcquireWithTimeout(model.DefaultTimeout); err != nil {
 				// TODO: log
@@ -72,7 +76,7 @@ func (w *WorkerPool) Run(ctx context.Context, notifyAll context.CancelFunc) {
 				// TODO: log
 				var tmrErr *serviceerrs.TooManyRequestsError
 				if ctx.Err() == nil && errors.As(err, &tmrErr) {
-					notifyAll()
+					cancelAll()
 					w.rateDataCh <- requestRateData{
 						tmrErr.RetryAfter,
 						tmrErr.RPM,
