@@ -1,7 +1,8 @@
 package semaphore
 
 import (
-	"fmt"
+	"errors"
+	"time"
 )
 
 type Semaphore struct {
@@ -14,14 +15,20 @@ func New(maxRequestCount uint64) *Semaphore {
 	}
 }
 
-func (s *Semaphore) Acquire() {
-	// TODO: log.Trace!
-	fmt.Println("acquire", "worker count:", len(s.semaCh))
-	s.semaCh <- struct{}{}
+func (s *Semaphore) AcquireWithTimeout(timeout time.Duration) error {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return errors.New("semaphore acquire timeout exceeded")
+	case s.semaCh <- struct{}{}:
+		// TODO: log.Trace!
+		return nil
+	}
 }
 
 func (s *Semaphore) Release() {
 	// TODO: log.Trace!
-	fmt.Println("release", "worker count:", len(s.semaCh))
 	<-s.semaCh
 }

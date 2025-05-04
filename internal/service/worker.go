@@ -60,7 +60,12 @@ func (w *WorkerPool) Run(ctx context.Context, notifyAll context.CancelFunc) {
 			return
 		case orderID := <-w.jobs:
 			w.requestCounter <- struct{}{}
-			w.sema.Acquire()
+			if err := w.sema.AcquireWithTimeout(model.DefaultTimeout); err != nil {
+				// TODO: log
+				w.results <- dummy(orderID)
+				continue
+			}
+
 			data, err := w.client.GetOrderInfo(strconv.FormatUint(orderID, 10))
 			w.sema.Release()
 			if err != nil {
@@ -73,13 +78,17 @@ func (w *WorkerPool) Run(ctx context.Context, notifyAll context.CancelFunc) {
 						tmrErr.RPM,
 					}
 				}
-				w.results <- model.DTOAccrualInfo{
-					Order:  strconv.FormatUint(orderID, 10),
-					Status: model.StatusCalculatorProcessing,
-				}
+				w.results <- dummy(orderID)
 				continue
 			}
 			w.results <- data
 		}
+	}
+}
+
+func dummy(orderID uint64) model.DTOAccrualInfo {
+	return model.DTOAccrualInfo{
+		Order:  strconv.FormatUint(orderID, 10),
+		Status: model.StatusCalculatorProcessing,
 	}
 }
