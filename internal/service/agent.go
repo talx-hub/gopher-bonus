@@ -55,14 +55,20 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 
 	rateData := requestRateData{}
 	var timer *time.Timer
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			poolCancel()
 			wg.Wait()
+			close(requestsCh)
 			close(rateDataCh)
 			close(a.responsesCh)
-			close(rateDataCh)
 			return
 		case rateData = <-rateDataCh:
 			watcher.Stop()
