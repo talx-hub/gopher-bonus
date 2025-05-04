@@ -2,12 +2,14 @@ package service
 
 import (
 	"math"
+	"sync"
 	"time"
 )
 
 type requestWatcher struct {
 	requestsCh   <-chan struct{}
 	stop         chan struct{}
+	stopOnce     sync.Once
 	requestCount uint64
 	startTime    time.Time
 	stopTime     time.Time
@@ -22,6 +24,8 @@ func newRequestWatcher(requestsCh <-chan struct{}) *requestWatcher {
 func (w *requestWatcher) Start() {
 	w.startTime = time.Now()
 	w.requestCount = 0
+	w.stopOnce = sync.Once{}
+	w.stop = make(chan struct{})
 
 	go func() {
 		for {
@@ -40,7 +44,9 @@ func (w *requestWatcher) Start() {
 }
 
 func (w *requestWatcher) Stop() {
-	w.stop <- struct{}{}
+	w.stopOnce.Do(func() {
+		close(w.stop)
+	})
 }
 
 func (w *requestWatcher) GetRPM() uint64 {
