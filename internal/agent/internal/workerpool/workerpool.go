@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/httpclient"
 	"github.com/talx-hub/gopher-bonus/internal/model"
@@ -83,15 +84,16 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 			pool.Sema.Release()
 			if err != nil {
 				// TODO: log
+				pool.Results <- pool.dummy(orderID, model.StatusCalculatorFailed)
 				var tmrErr *serviceerrs.TooManyRequestsError
 				if ctx.Err() == nil && errors.As(err, &tmrErr) {
 					cancelAll()
-					pool.rateDataCh <- *tmrErr
+					pool.RateDataCh <- *tmrErr
+					return
 				}
-				pool.results <- pool.dummy(orderID, model.StatusCalculatorFailed)
 				continue
 			}
-			pool.results <- data
+			pool.Results <- data
 		}
 	}
 }
