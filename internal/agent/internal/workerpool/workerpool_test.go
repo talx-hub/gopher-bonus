@@ -1,0 +1,246 @@
+package workerpool
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool/mocks"
+	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
+	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
+)
+
+func TestWorkerPool_worker(t *testing.T) {
+	tests := []struct {
+		name         string
+		jobs         []uint64
+		results      []model.DTOAccrualInfo
+		requestCount int
+		rateData     []serviceerrs.TooManyRequestsError
+	}{
+		{
+			name: "happy case #1",
+			jobs: []uint64{201, 202, 203, 204, 205, 206},
+			results: []model.DTOAccrualInfo{
+				{Order: "201", Status: "PROCESSED", Accrual: 201},
+				{Order: "202", Status: "PROCESSED", Accrual: 202},
+				{Order: "203", Status: "PROCESSED", Accrual: 203},
+				{Order: "204", Status: "PROCESSED", Accrual: 204},
+				{Order: "205", Status: "PROCESSED", Accrual: 205},
+				{Order: "206", Status: "PROCESSED", Accrual: 206},
+			},
+			requestCount: 6,
+			rateData:     []serviceerrs.TooManyRequestsError{},
+		},
+		{
+			name: "happy case #3",
+			jobs: []uint64{200},
+			results: []model.DTOAccrualInfo{
+				{Order: "200", Status: "PROCESSED", Accrual: 200},
+			},
+			requestCount: 1,
+			rateData:     []serviceerrs.TooManyRequestsError{},
+		},
+		{
+			name: "random error #1",
+			jobs: []uint64{500, 200, 201},
+			results: []model.DTOAccrualInfo{
+				{Order: "500", Status: "CALCULATOR_FAILED"},
+				{Order: "200", Status: "PROCESSED", Accrual: 200},
+				{Order: "201", Status: "PROCESSED", Accrual: 201},
+			},
+			requestCount: 3,
+			rateData:     []serviceerrs.TooManyRequestsError{},
+		},
+		{
+			name: "random error #2",
+			jobs: []uint64{500, 501, 502},
+			results: []model.DTOAccrualInfo{
+				{Order: "500", Status: "CALCULATOR_FAILED"},
+				{Order: "501", Status: "CALCULATOR_FAILED"},
+				{Order: "502", Status: "CALCULATOR_FAILED"},
+			},
+			requestCount: 3,
+			rateData:     []serviceerrs.TooManyRequestsError{},
+		},
+		{
+			name: "random error #3",
+			jobs: []uint64{200, 500, 201, 501},
+			results: []model.DTOAccrualInfo{
+				{Order: "200", Status: "PROCESSED", Accrual: 200},
+				{Order: "500", Status: "CALCULATOR_FAILED"},
+				{Order: "201", Status: "PROCESSED", Accrual: 201},
+				{Order: "501", Status: "CALCULATOR_FAILED"},
+			},
+			requestCount: 4,
+			rateData:     []serviceerrs.TooManyRequestsError{},
+		},
+		{
+			name: "too many requests #1",
+			jobs: []uint64{429},
+			results: []model.DTOAccrualInfo{
+				{Order: "429", Status: "CALCULATOR_FAILED"},
+			},
+			requestCount: 1,
+			rateData: []serviceerrs.TooManyRequestsError{
+				{RetryAfter: model.DefaultTimeout, RPM: 1},
+			},
+		},
+		{
+			name: "too many requests #2",
+			jobs: []uint64{429, 200, 201, 202},
+			results: []model.DTOAccrualInfo{
+				{Order: "429", Status: "CALCULATOR_FAILED"},
+			},
+			requestCount: 1,
+			rateData: []serviceerrs.TooManyRequestsError{
+				{RetryAfter: model.DefaultTimeout, RPM: 1},
+			},
+		},
+		{
+			name: "too many requests #3",
+			jobs: []uint64{201, 202, 429, 203, 204, 205},
+			results: []model.DTOAccrualInfo{
+				{Order: "201", Status: "PROCESSED", Accrual: 201},
+				{Order: "202", Status: "PROCESSED", Accrual: 202},
+				{Order: "429", Status: "CALCULATOR_FAILED"},
+			},
+			requestCount: 3,
+			rateData: []serviceerrs.TooManyRequestsError{
+				{RetryAfter: model.DefaultTimeout, RPM: 1},
+			},
+		},
+		{
+			name: "multiple too many requests",
+			jobs: []uint64{200, 429, 429, 429},
+			results: []model.DTOAccrualInfo{
+				{Order: "200", Status: "PROCESSED", Accrual: 200},
+				{Order: "429", Status: "CALCULATOR_FAILED"},
+			},
+			requestCount: 2,
+			rateData: []serviceerrs.TooManyRequestsError{
+				{RetryAfter: model.DefaultTimeout, RPM: 1},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			generateJobsWrapper := func() chan uint64 {
+				return GenerateJobs(t, ctx, tt.jobs)
+			}
+			pool, rateDataCh, requestCountCh, resultCh :=
+				SetupWorkerPool(t,
+					ConfigureMockAccrualClient(t),
+					semaphore.New(model.DefaultRequestCount),
+					generateJobsWrapper)
+
+			results, requests, errs := TestWorker(t,
+				ctx, cancel, rateDataCh, requestCountCh, resultCh, pool)
+
+			assert.Equal(t, tt.results, results)
+			assert.Equal(t, tt.requestCount, len(requests))
+			assert.Equal(t, tt.rateData, errs)
+		})
+	}
+}
+
+func TestWorkerPool_worker_noJobs(t *testing.T) {
+	t.Run("no jobs for worker", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		mockClientNoExpectations := mocks.NewMockAccrualClient(t)
+		generateJobsWrapper := func() chan uint64 {
+			return GenerateJobs(t, ctx, []uint64{})
+		}
+		pool, rateDataCh, requestCountCh, resultCh :=
+			SetupWorkerPool(t,
+				mockClientNoExpectations,
+				semaphore.New(model.DefaultRequestCount),
+				generateJobsWrapper)
+
+		results, requests, errs := TestWorker(t,
+			ctx, cancel, rateDataCh, requestCountCh, resultCh, pool)
+
+		assert.Equal(t, []model.DTOAccrualInfo{}, results)
+		assert.Equal(t, 0, len(requests))
+		assert.Equal(t, []serviceerrs.TooManyRequestsError{}, errs)
+		mockClientNoExpectations.AssertNotCalled(t, "GetOrderInfo")
+	})
+}
+
+func TestWorkerPool_worker_manualCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	jobCtx, generateCancel := context.WithCancel(ctx)
+	defer generateCancel()
+	generateJobsWrapper := func() chan uint64 {
+		return GenerateInfiniteJobs(t, jobCtx)
+	}
+	pool, rateDataCh, requestCountCh, resultCh :=
+		SetupWorkerPool(t,
+			ConfigureMockAccrualClient(t),
+			semaphore.New(model.DefaultRequestCount),
+			generateJobsWrapper)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(1 * time.Second):
+				t.Error("timed out waiting for job to complete")
+				return
+			}
+		}
+	}()
+
+	time.AfterFunc(100*time.Millisecond, cancel)
+	results, requests, errs := TestWorker(t,
+		ctx, cancel, rateDataCh, requestCountCh, resultCh, pool)
+
+	assert.NotEmpty(t, results)
+	assert.NotZero(t, len(requests))
+	assert.Equal(t, []serviceerrs.TooManyRequestsError{}, errs)
+}
+
+func TestWorkerPool_worker_semaphoreError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	generateJobsWrapper := func() chan uint64 {
+		return GenerateJobs(t, ctx, []uint64{429, 200, 201, 500, 202, 501, 203})
+	}
+
+	mockClientNoExpectations := mocks.NewMockAccrualClient(t)
+	pool, rateDataCh, requestCountCh, resultCh :=
+		SetupWorkerPool(t,
+			mockClientNoExpectations,
+			ConfigureMockAlwaysTimeoutExceedSemaphore(t),
+			generateJobsWrapper)
+
+	results, requests, errs := TestWorker(t,
+		ctx, cancel, rateDataCh, requestCountCh, resultCh, pool)
+
+	wantResults := []model.DTOAccrualInfo{
+		{Order: "429", Status: string(model.StatusAgentFailed)},
+		{Order: "200", Status: string(model.StatusAgentFailed)},
+		{Order: "201", Status: string(model.StatusAgentFailed)},
+		{Order: "500", Status: string(model.StatusAgentFailed)},
+		{Order: "202", Status: string(model.StatusAgentFailed)},
+		{Order: "501", Status: string(model.StatusAgentFailed)},
+		{Order: "203", Status: string(model.StatusAgentFailed)},
+	}
+
+	assert.Equal(t, wantResults, results)
+	assert.Equal(t, 0, len(requests))
+	assert.Equal(t, []serviceerrs.TooManyRequestsError{}, errs)
+	mockClientNoExpectations.AssertNotCalled(t, "GetOrderInfo")
+}
