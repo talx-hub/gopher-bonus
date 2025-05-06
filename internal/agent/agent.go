@@ -47,14 +47,15 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 	)
 	poolCancel := pool.Start(ctx, maxRequestCount)
 
-	rateData := serviceerrs.TooManyRequestsError{}
-	var timer *time.Timer
+	timer := time.NewTimer(model.DefaultTimeout)
+	timer.Stop()
 	defer func() {
 		if timer != nil {
 			timer.Stop()
 		}
 	}()
 
+	rateData := serviceerrs.TooManyRequestsError{}
 	for {
 		select {
 		case <-ctx.Done():
