@@ -17,14 +17,19 @@ type AccrualClient interface {
 	GetOrderInfo(orderID string) (model.DTOAccrualInfo, error)
 }
 
+type AccrualSemaphore interface {
+	AcquireWithTimeout(timeout time.Duration) error
+	Release()
+}
+
 type WorkerPool struct {
-	client         AccrualClient
-	sema           *semaphore.Semaphore
-	wg             *sync.WaitGroup
-	jobs           <-chan uint64
-	rateDataCh     chan<- serviceerrs.TooManyRequestsError
-	requestCounter chan<- struct{}
-	results        chan<- model.DTOAccrualInfo
+	Client         AccrualClient
+	Sema           AccrualSemaphore
+	WaitGroup      *sync.WaitGroup
+	Jobs           <-chan uint64
+	RateDataCh     chan<- serviceerrs.TooManyRequestsError
+	RequestCounter chan<- struct{}
+	Results        chan<- model.DTOAccrualInfo
 }
 
 func New(
@@ -36,21 +41,21 @@ func New(
 	results chan<- model.DTOAccrualInfo,
 ) *WorkerPool {
 	return &WorkerPool{
-		client:         httpclient.New(clientAddr),
-		wg:             wg,
-		jobs:           jobs,
-		rateDataCh:     rateDataCh,
-		requestCounter: requestCounter,
-		results:        results,
+		Client:         httpclient.New(clientAddr),
+		WaitGroup:      wg,
+		Jobs:           jobs,
+		RateDataCh:     rateDataCh,
+		RequestCounter: requestCounter,
+		Results:        results,
 	}
 }
 
 func (pool *WorkerPool) Start(ctx context.Context, maxRequestCount uint64) context.CancelFunc {
-	pool.sema = semaphore.New(maxRequestCount)
+	pool.Sema = semaphore.New(maxRequestCount)
 	workerCtx, workerCancel := context.WithCancel(ctx)
 	workerCount := runtime.NumCPU() * model.DefaultWorkerCountMultiplier
 	for i := 0; i < workerCount; i++ {
-		pool.wg.Add(1)
+		pool.WaitGroup.Add(1)
 		go pool.worker(workerCtx, workerCancel)
 	}
 
@@ -58,25 +63,24 @@ func (pool *WorkerPool) Start(ctx context.Context, maxRequestCount uint64) conte
 }
 
 func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc) {
-	defer pool.wg.Done()
+	defer pool.WaitGroup.Done()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case orderID, ok := <-pool.jobs:
+		case orderID, ok := <-pool.Jobs:
 			if !ok {
 				return
 			}
 			pool.requestCounter <- struct{}{}
-			if err := pool.sema.AcquireWithTimeout(model.DefaultTimeout); err != nil {
+			if err := pool.Sema.AcquireWithTimeout(model.DefaultTimeout); err != nil {
 				// TODO: log
-				pool.results <- pool.dummy(orderID, model.StatusAgentFailed)
+				pool.Results <- pool.dummy(orderID, model.StatusAgentFailed)
 				continue
 			}
-
-			data, err := pool.client.GetOrderInfo(strconv.FormatUint(orderID, 10))
-			pool.sema.Release()
+			data, err := pool.Client.GetOrderInfo(strconv.FormatUint(orderID, 10))
+			pool.Sema.Release()
 			if err != nil {
 				// TODO: log
 				var tmrErr *serviceerrs.TooManyRequestsError
