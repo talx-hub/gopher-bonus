@@ -74,12 +74,13 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 			if !ok {
 				return
 			}
-			pool.requestCounter <- struct{}{}
+
 			if err := pool.Sema.AcquireWithTimeout(model.DefaultTimeout); err != nil {
 				// TODO: log
 				pool.Results <- pool.dummy(orderID, model.StatusAgentFailed)
 				continue
 			}
+			pool.RequestCounter <- struct{}{}
 			data, err := pool.Client.GetOrderInfo(strconv.FormatUint(orderID, 10))
 			pool.Sema.Release()
 			if err != nil {
