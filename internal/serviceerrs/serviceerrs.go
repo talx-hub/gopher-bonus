@@ -1,6 +1,12 @@
 package serviceerrs
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrSemaphoreTimeoutExceeded = errors.New(
+	"semaphore acquire timeout exceeded")
 
 type TooManyRequestsError struct {
 	RetryAfter time.Duration

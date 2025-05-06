@@ -17,7 +17,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	go a.Run(context.TODO(), 100500)
+	go a.Run(context.TODO(), model.DefaultRequestCount)
 
 	var n uint64
 	go func() {

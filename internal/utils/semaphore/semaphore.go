@@ -1,8 +1,9 @@
 package semaphore
 
 import (
-	"errors"
 	"time"
+
+	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
 type Semaphore struct {
@@ -21,7 +22,8 @@ func (s *Semaphore) AcquireWithTimeout(timeout time.Duration) error {
 
 	select {
 	case <-timer.C:
-		return errors.New("semaphore acquire timeout exceeded")
+		// TODO: log
+		return serviceerrs.ErrSemaphoreTimeoutExceeded
 	case s.semaCh <- struct{}{}:
 		// TODO: log.Trace!
 		return nil
