@@ -82,6 +82,40 @@ func (_c *MockAccrualSemaphore_AcquireWithTimeout_Call) RunAndReturn(run func(ti
 	return _c
 }
 
+// ChangeMaxRequests provides a mock function for the type MockAccrualSemaphore
+func (_mock *MockAccrualSemaphore) ChangeMaxRequests(newMaxRequests uint64) {
+	_mock.Called(newMaxRequests)
+	return
+}
+
+// MockAccrualSemaphore_ChangeMaxRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChangeMaxRequests'
+type MockAccrualSemaphore_ChangeMaxRequests_Call struct {
+	*mock.Call
+}
+
+// ChangeMaxRequests is a helper method to define mock.On call
+//   - newMaxRequests
+func (_e *MockAccrualSemaphore_Expecter) ChangeMaxRequests(newMaxRequests interface{}) *MockAccrualSemaphore_ChangeMaxRequests_Call {
+	return &MockAccrualSemaphore_ChangeMaxRequests_Call{Call: _e.mock.On("ChangeMaxRequests", newMaxRequests)}
+}
+
+func (_c *MockAccrualSemaphore_ChangeMaxRequests_Call) Run(run func(newMaxRequests uint64)) *MockAccrualSemaphore_ChangeMaxRequests_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockAccrualSemaphore_ChangeMaxRequests_Call) Return() *MockAccrualSemaphore_ChangeMaxRequests_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockAccrualSemaphore_ChangeMaxRequests_Call) RunAndReturn(run func(newMaxRequests uint64)) *MockAccrualSemaphore_ChangeMaxRequests_Call {
+	_c.Run(run)
+	return _c
+}
+
 // Release provides a mock function for the type MockAccrualSemaphore
 func (_mock *MockAccrualSemaphore) Release() {
 	_mock.Called()

@@ -6,10 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/httpclient"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/requestwatcher"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
+	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
 type Agent struct {
@@ -38,14 +40,15 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 	wg := &sync.WaitGroup{}
 	rateDataCh := make(chan serviceerrs.TooManyRequestsError)
 	pool := workerpool.New(
-		a.accrualAddress,
+		httpclient.New(a.accrualAddress),
+		semaphore.New(maxRequestCount),
 		wg,
 		a.ordersCh,
 		rateDataCh,
 		requestsCh,
 		a.responsesCh,
 	)
-	poolCancel := pool.Start(ctx, maxRequestCount)
+	poolCancel := pool.Start(ctx)
 
 	timer := time.NewTimer(model.DefaultTimeout)
 	timer.Stop()
@@ -76,7 +79,8 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			}
 
 			watcher.Start()
-			poolCancel = pool.Start(ctx, newMaxRequestCount)
+			pool.ChangeMaxRequests(newMaxRequestCount)
+			poolCancel = pool.Start(ctx)
 		}
 	}
 }

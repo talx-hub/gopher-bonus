@@ -70,36 +70,16 @@ func SetupWorkerPool(t *testing.T,
 	requestCountCh := make(chan struct{})
 	resultCh := make(chan model.DTOAccrualInfo)
 
-	pool := ConfigureWorkerPool(t,
+	pool := New(
 		client,
 		sema,
-		jobGenerator,
+		&sync.WaitGroup{},
+		jobGenerator(),
 		rateDataCh,
 		requestCountCh,
 		resultCh)
 
 	return pool, rateDataCh, requestCountCh, resultCh
-}
-
-func ConfigureWorkerPool(t *testing.T,
-	client AccrualClient,
-	sema AccrualSemaphore,
-	jobs func() chan uint64,
-	rateDataCh chan<- serviceerrs.TooManyRequestsError,
-	requestCounter chan<- struct{},
-	results chan<- model.DTOAccrualInfo,
-) *WorkerPool {
-	t.Helper()
-
-	return &WorkerPool{
-		Client:         client,
-		Sema:           sema,
-		WaitGroup:      &sync.WaitGroup{},
-		Jobs:           jobs(),
-		RateDataCh:     rateDataCh,
-		RequestCounter: requestCounter,
-		Results:        results,
-	}
 }
 
 func GenerateJobs(t *testing.T, ctx context.Context, s []uint64,

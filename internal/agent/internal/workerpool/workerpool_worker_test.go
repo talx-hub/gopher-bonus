@@ -13,7 +13,7 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
-func TestWorkerPool_worker(t *testing.T) {
+func TestWorkerPool_worker_general(t *testing.T) {
 	tests := []struct {
 		name         string
 		jobs         []uint64

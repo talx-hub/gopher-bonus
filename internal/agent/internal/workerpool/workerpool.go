@@ -8,10 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/talx-hub/gopher-bonus/internal/agent/internal/httpclient"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
-	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
 type AccrualClient interface {
@@ -20,6 +18,7 @@ type AccrualClient interface {
 
 type AccrualSemaphore interface {
 	AcquireWithTimeout(timeout time.Duration) error
+	ChangeMaxRequests(newMaxRequests uint64)
 	Release()
 }
 
@@ -34,7 +33,8 @@ type WorkerPool struct {
 }
 
 func New(
-	clientAddr string,
+	client AccrualClient,
+	sema AccrualSemaphore,
 	wg *sync.WaitGroup,
 	jobs <-chan uint64,
 	rateDataCh chan<- serviceerrs.TooManyRequestsError,
@@ -42,7 +42,8 @@ func New(
 	results chan<- model.DTOAccrualInfo,
 ) *WorkerPool {
 	return &WorkerPool{
-		Client:         httpclient.New(clientAddr),
+		Client:         client,
+		Sema:           sema,
 		WaitGroup:      wg,
 		Jobs:           jobs,
 		RateDataCh:     rateDataCh,
@@ -51,8 +52,7 @@ func New(
 	}
 }
 
-func (pool *WorkerPool) Start(ctx context.Context, maxRequestCount uint64) context.CancelFunc {
-	pool.Sema = semaphore.New(maxRequestCount)
+func (pool *WorkerPool) Start(ctx context.Context) context.CancelFunc {
 	workerCtx, workerCancel := context.WithCancel(ctx)
 	workerCount := runtime.NumCPU() * model.DefaultWorkerCountMultiplier
 	for range workerCount {
@@ -61,6 +61,10 @@ func (pool *WorkerPool) Start(ctx context.Context, maxRequestCount uint64) conte
 	}
 
 	return workerCancel
+}
+
+func (pool *WorkerPool) ChangeMaxRequests(newMaxRequests uint64) {
+	pool.Sema.ChangeMaxRequests(newMaxRequests)
 }
 
 func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc) {
