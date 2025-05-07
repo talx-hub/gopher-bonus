@@ -8,6 +8,9 @@ import (
 var ErrSemaphoreTimeoutExceeded = errors.New(
 	"semaphore acquire timeout exceeded")
 
+var ErrSemaphoreAcquireTemporaryUnavailable = errors.New(
+	"semaphore acquire temporary unavailable")
+
 type TooManyRequestsError struct {
 	RetryAfter time.Duration
 	RPM        uint64
