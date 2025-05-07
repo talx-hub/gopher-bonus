@@ -30,6 +30,7 @@ type WorkerPool struct {
 	RateDataCh     chan<- serviceerrs.TooManyRequestsError
 	RequestCounter chan<- struct{}
 	Results        chan<- model.DTOAccrualInfo
+	OnWorkerStart  func()
 }
 
 func New(
@@ -68,6 +69,9 @@ func (pool *WorkerPool) ChangeMaxRequests(newMaxRequests uint64) {
 }
 
 func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc) {
+	if pool.OnWorkerStart != nil {
+		pool.OnWorkerStart()
+	}
 	defer pool.WaitGroup.Done()
 
 	for {

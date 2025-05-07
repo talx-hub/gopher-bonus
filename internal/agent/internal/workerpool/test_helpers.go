@@ -60,6 +60,7 @@ func TestWorker(t *testing.T,
 }
 
 func SetupWorkerPool(t *testing.T,
+	wg *sync.WaitGroup,
 	client AccrualClient,
 	sema AccrualSemaphore,
 	jobGenerator func() chan uint64,
@@ -73,7 +74,7 @@ func SetupWorkerPool(t *testing.T,
 	pool := New(
 		client,
 		sema,
-		&sync.WaitGroup{},
+		wg,
 		jobGenerator(),
 		rateDataCh,
 		requestCountCh,

@@ -2,6 +2,7 @@ package workerpool
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -136,6 +137,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 			}
 			pool, rateDataCh, requestCountCh, resultCh :=
 				SetupWorkerPool(t,
+					&sync.WaitGroup{},
 					ConfigureMockAccrualClient(t),
 					semaphore.New(model.DefaultRequestCount),
 					generateJobsWrapper)
@@ -161,6 +163,7 @@ func TestWorkerPool_worker_noJobs(t *testing.T) {
 		}
 		pool, rateDataCh, requestCountCh, resultCh :=
 			SetupWorkerPool(t,
+				&sync.WaitGroup{},
 				mockClientNoExpectations,
 				semaphore.New(model.DefaultRequestCount),
 				generateJobsWrapper)
@@ -186,6 +189,7 @@ func TestWorkerPool_worker_manualCancel(t *testing.T) {
 	}
 	pool, rateDataCh, requestCountCh, resultCh :=
 		SetupWorkerPool(t,
+			&sync.WaitGroup{},
 			ConfigureMockAccrualClient(t),
 			semaphore.New(model.DefaultRequestCount),
 			generateJobsWrapper)
@@ -222,6 +226,7 @@ func TestWorkerPool_worker_semaphoreError(t *testing.T) {
 	mockClientNoExpectations := mocks.NewMockAccrualClient(t)
 	pool, rateDataCh, requestCountCh, resultCh :=
 		SetupWorkerPool(t,
+			&sync.WaitGroup{},
 			mockClientNoExpectations,
 			ConfigureMockAlwaysTimeoutExceedSemaphore(t),
 			generateJobsWrapper)
