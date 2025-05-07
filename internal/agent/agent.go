@@ -13,9 +13,9 @@ import (
 )
 
 type Agent struct {
-	accrualAddress string
 	ordersCh       chan uint64
 	responsesCh    chan<- model.DTOAccrualInfo
+	accrualAddress string
 }
 
 func New(

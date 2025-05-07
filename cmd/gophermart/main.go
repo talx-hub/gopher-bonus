@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 
@@ -15,14 +16,18 @@ func main() {
 	outputCh := make(chan model.DTOAccrualInfo)
 	a := agent.New(inputCh, outputCh, "127.0.0.1:8080")
 	var wg sync.WaitGroup
-	wg.Add(3)
+	const nGoroutines = 3
+	wg.Add(nGoroutines)
 
 	go a.Run(context.TODO(), model.DefaultRequestCount)
 
 	var n uint64
 	go func() {
 		for {
-			fmt.Fscan(os.Stdin, &n)
+			_, err := fmt.Fscan(os.Stdin, &n)
+			if err != nil {
+				log.Fatal(err)
+			}
 			inputCh <- n
 		}
 	}()

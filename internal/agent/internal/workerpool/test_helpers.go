@@ -125,7 +125,8 @@ func GenerateJobs(t *testing.T, ctx context.Context, s []uint64,
 func GenerateInfiniteJobs(t *testing.T, ctx context.Context) chan uint64 {
 	t.Helper()
 
-	infiniteJobsCh := make(chan uint64, 1024)
+	const bigCapacity = 1024
+	infiniteJobsCh := make(chan uint64, bigCapacity)
 
 	go func() {
 		defer close(infiniteJobsCh)

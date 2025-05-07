@@ -44,11 +44,14 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 			}
 
 			if orderID == "428" {
-				time.Sleep(2 * model.DefaultTimeout)
+				const multiplier = 2
+				time.Sleep(multiplier * model.DefaultTimeout)
+
+				const accrual = 428
 				return model.DTOAccrualInfo{
-					Order:   "428",
+					Order:   orderID,
 					Status:  string(model.StatusCalculatorProcessed),
-					Accrual: 428,
+					Accrual: accrual,
 				}, nil
 			}
 

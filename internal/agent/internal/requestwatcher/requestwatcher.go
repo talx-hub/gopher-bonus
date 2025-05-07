@@ -7,12 +7,12 @@ import (
 )
 
 type RequestWatcher struct {
-	requestsCh   <-chan struct{}
 	stop         chan struct{}
-	stopOnce     sync.Once
-	requestCount uint64
+	requestsCh   <-chan struct{}
 	startTime    time.Time
 	stopTime     time.Time
+	requestCount uint64
+	stopOnce     sync.Once
 }
 
 func New(requestsCh <-chan struct{}) *RequestWatcher {

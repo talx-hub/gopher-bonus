@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,7 +33,7 @@ func (c *HTTPClient) GetOrderInfo(orderID string,
 	u := url.URL{
 		Scheme: "http",
 		Host:   c.accrualAddress,
-		Path:   fmt.Sprintf("/api/orders/%s", orderID),
+		Path:   "/api/orders/" + orderID,
 	}
 
 	resp, err := c.client.Get(u.String())
@@ -44,6 +45,7 @@ func (c *HTTPClient) GetOrderInfo(orderID string,
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
 			// TODO: log
+			log.Printf("failed to close response body: %s", err)
 		}
 	}()
 	if err != nil {

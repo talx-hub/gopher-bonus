@@ -55,7 +55,7 @@ func (pool *WorkerPool) Start(ctx context.Context, maxRequestCount uint64) conte
 	pool.Sema = semaphore.New(maxRequestCount)
 	workerCtx, workerCancel := context.WithCancel(ctx)
 	workerCount := runtime.NumCPU() * model.DefaultWorkerCountMultiplier
-	for i := 0; i < workerCount; i++ {
+	for range workerCount {
 		pool.WaitGroup.Add(1)
 		go pool.worker(workerCtx, workerCancel)
 	}
