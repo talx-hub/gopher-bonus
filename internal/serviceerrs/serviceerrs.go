@@ -2,6 +2,7 @@ package serviceerrs
 
 import (
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -17,5 +18,6 @@ type TooManyRequestsError struct {
 }
 
 func (e *TooManyRequestsError) Error() string {
-	return "too many requests"
+	return "too many requests. Retry after " + e.RetryAfter.String() + ". " +
+		"requested RPM: " + strconv.FormatUint(e.RPM, 10)
 }
