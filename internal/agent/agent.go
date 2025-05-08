@@ -18,6 +18,7 @@ type Agent struct {
 	ordersCh       chan uint64
 	responsesCh    chan<- model.DTOAccrualInfo
 	accrualAddress string
+	workerCount    int
 }
 
 func New(
@@ -29,6 +30,7 @@ func New(
 		accrualAddress: accrualAddress,
 		ordersCh:       ordersCh,
 		responsesCh:    responsesCh,
+		workerCount:    runtime.NumCPU() * model.DefaultWorkerCountMultiplier,
 	}
 }
 
@@ -48,7 +50,7 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 		requestsCh,
 		a.responsesCh,
 	)
-	poolCancel := pool.Start(ctx)
+	poolCancel := pool.Start(ctx, a.workerCount)
 
 	timer := time.NewTimer(model.DefaultTimeout)
 	timer.Stop()
@@ -80,7 +82,7 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 
 			watcher.Start()
 			pool.ChangeMaxRequests(newMaxRequestCount)
-			poolCancel = pool.Start(ctx)
+			poolCancel = pool.Start(ctx, a.workerCount)
 		}
 	}
 }

@@ -3,7 +3,6 @@ package workerpool
 import (
 	"context"
 	"errors"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -53,9 +52,8 @@ func New(
 	}
 }
 
-func (pool *WorkerPool) Start(ctx context.Context) context.CancelFunc {
+func (pool *WorkerPool) Start(ctx context.Context, workerCount int) context.CancelFunc {
 	workerCtx, workerCancel := context.WithCancel(ctx)
-	workerCount := runtime.NumCPU() * model.DefaultWorkerCountMultiplier
 	for range workerCount {
 		pool.WaitGroup.Add(1)
 		go pool.worker(workerCtx, workerCancel)

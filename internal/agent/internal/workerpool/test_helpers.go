@@ -17,6 +17,7 @@ func TestPool(t *testing.T,
 	requestCountCh chan struct{},
 	resultCh chan model.DTOAccrualInfo,
 	pool *WorkerPool,
+	workerCount int,
 ) ([]model.DTOAccrualInfo, []struct{}, []serviceerrs.TooManyRequestsError) {
 	t.Helper()
 
@@ -46,7 +47,7 @@ func TestPool(t *testing.T,
 		results = ListenChannel(t, helperCtx, resultCh)
 	}()
 
-	poolCancel := pool.Start(ctx)
+	poolCancel := pool.Start(ctx, workerCount)
 	poolWG.Wait()
 	close(rateDataCh)
 	close(requestCountCh)

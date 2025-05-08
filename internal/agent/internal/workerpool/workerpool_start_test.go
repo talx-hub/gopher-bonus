@@ -2,7 +2,6 @@ package workerpool
 
 import (
 	"context"
-	"fmt"
 	"runtime"
 	"sync"
 	"testing"
@@ -42,10 +41,10 @@ func TestWorkerPool_Start_count_workers(t *testing.T) {
 		defer mu.Unlock()
 		startedCount++
 	}
-	poolCancel := pool.Start(ctx)
+	wantWorkers := runtime.NumCPU() * model.DefaultWorkerCountMultiplier
+	poolCancel := pool.Start(ctx, wantWorkers)
 	time.Sleep(50 * time.Millisecond)
 
-	wantWorkers := runtime.NumCPU() * model.DefaultWorkerCountMultiplier
 	ready := make(chan struct{})
 	if startedCount == wantWorkers {
 		cancel()
@@ -118,7 +117,7 @@ func TestWorkerPool_Start_generalPipeline(t *testing.T) {
 		jobs,
 	)
 	res, counts, errs := TestPool(t,
-		ctx, cancel, wg, errsCh, countCh, resultsCh, pool)
+		ctx, cancel, wg, errsCh, countCh, resultsCh, pool, workerCount)
 
 	calcFails := 0
 	agentFails := 0
@@ -142,6 +141,66 @@ func TestWorkerPool_Start_generalPipeline(t *testing.T) {
 	assert.NotZero(t, ok)
 	assert.Zero(t, agentFails)
 	assert.Zero(t, len(errs))
+}
+
+func TestWorkerPool_Start_tooManyRequests(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	prepared := []uint64{
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		429,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+		212, 213, 214, 215, 216, 217, 500, 219, 220, 221, 222, 223, 224, 225,
+	}
+	jobs := func() chan uint64 {
+		return GenerateJobs(t, ctx, prepared)
+	}
+
+	workerCount := 2
+	semaCapacity := workerCount * 10
+	wg := &sync.WaitGroup{}
+	pool, errsCh, countCh, resultsCh := SetupWorkerPool(t,
+		wg,
+		ConfigureMockAccrualClient(t),
+		semaphore.New(uint64(semaCapacity)),
+		jobs,
+	)
+	res, counts, errs := TestPool(t,
+		ctx, cancel, wg, errsCh, countCh, resultsCh, pool, workerCount)
+
+	calcFails := 0
+	agentFails := 0
+	ok := 0
+	for _, r := range res {
+		if r.Status == string(model.StatusCalculatorFailed) {
+			calcFails++
+		}
+		if r.Status == string(model.StatusAgentFailed) {
+			agentFails++
+		}
+		if r.Status == string(model.StatusCalculatorProcessed) {
+			ok++
+		}
+	}
+
+	triggerJobNo := 28
+	safetyCoeff := 10
+	requestsCanBeHandled := triggerJobNo + workerCount*safetyCoeff
+	require.NotZero(t, len(counts))
+	require.NotZero(t, calcFails)
+	require.NotZero(t, ok)
+	require.NotZero(t, len(errs))
+	assert.Equal(t, 1, len(errs))
+	assert.GreaterOrEqual(t, requestsCanBeHandled, len(counts))
 }
 
 func TestWorkerPool_Start_semaTimeout(t *testing.T) {
@@ -189,7 +248,7 @@ func TestWorkerPool_Start_semaTimeout(t *testing.T) {
 		jobs,
 	)
 	res, counts, errs := TestPool(t,
-		ctx, cancel, wg, errsCh, countCh, resultsCh, pool)
+		ctx, cancel, wg, errsCh, countCh, resultsCh, pool, workerCount)
 
 	calcFails := 0
 	agentFails := 0
@@ -205,12 +264,6 @@ func TestWorkerPool_Start_semaTimeout(t *testing.T) {
 			ok++
 		}
 	}
-
-	fmt.Println(ok)
-	fmt.Println(calcFails)
-	fmt.Println(agentFails)
-	fmt.Println(len(errs))
-	fmt.Println(len(counts))
 
 	assert.NotZero(t, len(counts))
 	assert.NotZero(t, calcFails)
