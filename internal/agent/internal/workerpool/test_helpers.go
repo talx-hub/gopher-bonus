@@ -9,6 +9,58 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
+func TestPool(t *testing.T,
+	ctx context.Context,
+	cancel context.CancelFunc,
+	poolWG *sync.WaitGroup,
+	rateDataCh chan serviceerrs.TooManyRequestsError,
+	requestCountCh chan struct{},
+	resultCh chan model.DTOAccrualInfo,
+	pool *WorkerPool,
+) ([]model.DTOAccrualInfo, []struct{}, []serviceerrs.TooManyRequestsError) {
+	t.Helper()
+
+	helperCtx, helperCancel := context.WithCancel(context.Background())
+	defer helperCancel()
+
+	helperWG := &sync.WaitGroup{}
+
+	helperWG.Add(1)
+	var errs []serviceerrs.TooManyRequestsError
+	go func() {
+		defer helperWG.Done()
+		errs = ListenChannel(t, helperCtx, rateDataCh)
+	}()
+
+	helperWG.Add(1)
+	var requests []struct{}
+	go func() {
+		defer helperWG.Done()
+		requests = ListenChannel(t, helperCtx, requestCountCh)
+	}()
+
+	helperWG.Add(1)
+	var results []model.DTOAccrualInfo
+	go func() {
+		defer helperWG.Done()
+		results = ListenChannel(t, helperCtx, resultCh)
+	}()
+
+	poolCancel := pool.Start(ctx)
+	poolWG.Wait()
+	close(rateDataCh)
+	close(requestCountCh)
+	close(resultCh)
+	helperCancel()
+
+	helperWG.Wait()
+
+	cancel()
+	poolCancel()
+
+	return results, requests, errs
+}
+
 func TestWorker(t *testing.T,
 	ctx context.Context,
 	cancel context.CancelFunc,
