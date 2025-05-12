@@ -37,7 +37,15 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 		Path:   "/api/orders/" + orderID,
 	}
 
-	resp, err := c.client.Get(u.String())
+	tCtx, cancel := context.WithTimeout(ctx, model.DefaultTimeout)
+	defer cancel()
+	request, err := http.NewRequestWithContext(
+		tCtx, http.MethodGet, path.String(), http.NoBody)
+	if err != nil {
+		return model.DTOAccrualInfo{},
+			fmt.Errorf("failed to create the request: %w", err)
+	}
+	resp, err := c.client.Do(request)
 	if err != nil {
 		return model.DTOAccrualInfo{},
 			fmt.Errorf("failed to send request to Accrual: %w", err)
