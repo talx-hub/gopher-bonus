@@ -3,12 +3,14 @@ package workerpool
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
+	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 )
 
 type AccrualClient interface {
@@ -58,6 +60,9 @@ func (pool *WorkerPool) Start(ctx context.Context, workerCount int) context.Canc
 		pool.WaitGroup.Add(1)
 		go pool.worker(workerCtx, workerCancel)
 	}
+	log := logger.FromContext(workerCtx).With("module", "worker_pool")
+	log.LogAttrs(ctx, slog.LevelInfo,
+		"all workers started", slog.Int("count", workerCount))
 
 	return workerCancel
 }
@@ -72,6 +77,7 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 	}
 	defer pool.WaitGroup.Done()
 
+	log := logger.FromContext(ctx).With("module", "worker pool")
 	for {
 		select {
 		case <-ctx.Done():
@@ -82,20 +88,30 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 			}
 
 			if err := pool.Sema.AcquireWithTimeout(model.DefaultTimeout); err != nil {
-				// TODO: log
+				log.With("unit", "semaphore").LogAttrs(
+					ctx,
+					slog.LevelWarn,
+					err.Error(),
+				)
 				pool.Results <- pool.dummy(orderID, model.StatusAgentFailed)
 				continue
 			}
+			log.With("unit", "semaphore").
+				LogAttrs(ctx, slog.LevelDebug, "acquire")
 			pool.RequestCounter <- struct{}{}
 
 			data, err := pool.Client.GetOrderInfo(
 				ctx,
 				strconv.FormatUint(orderID, 10))
 			pool.Sema.Release()
+			log.With("unit", "semaphore").
+				LogAttrs(ctx, slog.LevelDebug, "release")
+
 			if err != nil {
-				// TODO: log
 				pool.Results <- pool.dummy(orderID, model.StatusCalculatorFailed)
 
+				log.LogAttrs(ctx, slog.LevelError,
+					"failed to get order info", slog.Any("error", err))
 				if ctx.Err() != nil {
 					return
 				}

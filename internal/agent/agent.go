@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"log/slog"
 	"runtime"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
+	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
@@ -35,8 +37,11 @@ func New(
 }
 
 func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
+	log := logger.FromContext(ctx).With("service", "agent")
+	log.LogAttrs(ctx, slog.LevelInfo, "running")
+
 	requestsCh := make(chan struct{}, runtime.NumCPU()*model.DefaultWorkerCountMultiplier)
-	watcher := requestwatcher.New(requestsCh)
+	watcher := requestwatcher.New(requestsCh, log)
 	watcher.Start()
 
 	wg := &sync.WaitGroup{}
@@ -50,6 +55,7 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 		requestsCh,
 		a.responsesCh,
 	)
+	log.LogAttrs(ctx, slog.LevelInfo, "starting worker pool")
 	poolCancel := pool.Start(ctx, a.workerCount)
 
 	timer := time.NewTimer(model.DefaultTimeout)
@@ -69,11 +75,16 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			close(requestsCh)
 			close(rateDataCh)
 			close(a.responsesCh)
+			log.LogAttrs(ctx, slog.LevelInfo, "stopped")
 			return
 		case rateData = <-rateDataCh:
 			wg.Wait()
 			watcher.Stop()
 			timer = time.NewTimer(rateData.RetryAfter)
+			log.LogAttrs(ctx,
+				slog.LevelInfo,
+				"paused requesting",
+				slog.Duration("retry_after", rateData.RetryAfter))
 		case <-timer.C:
 			currRPM := watcher.GetRPM()
 			newMaxRequestCount := maxRequestCount
@@ -84,6 +95,11 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			watcher.Start()
 			pool.ChangeMaxRequests(newMaxRequestCount)
 			poolCancel = pool.Start(ctx, a.workerCount)
+			log.LogAttrs(ctx,
+				slog.LevelInfo,
+				"restarted requesting",
+				slog.Int("oldPRM", int(maxRequestCount)),
+				slog.Int("newPRM", int(newMaxRequestCount)))
 		}
 	}
 }

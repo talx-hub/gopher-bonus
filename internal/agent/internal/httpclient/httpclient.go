@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
+	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 )
 
 type HTTPClient struct {
@@ -24,7 +25,7 @@ type HTTPClient struct {
 
 func New(accrualAddress string) *HTTPClient {
 	return &HTTPClient{
-		client:         http.Client{Timeout: model.DefaultTimeout},
+		client:         http.Client{},
 		accrualAddress: accrualAddress,
 	}
 }
@@ -53,8 +54,13 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 	body, err := io.ReadAll(resp.Body)
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
-			// TODO: log
-			log.Printf("failed to close response body: %s", err)
+			log := logger.FromContext(ctx)
+			log.LogAttrs(
+				ctx,
+				slog.LevelError,
+				"failed to close the response body",
+				slog.Any("error", err),
+			)
 		}
 	}()
 	if err != nil {
@@ -67,7 +73,7 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 		return data, err
 	}
 
-	return data, fmt.Errorf("request accrual failed: %w", err)
+	return data, nil
 }
 
 func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
