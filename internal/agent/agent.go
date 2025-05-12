@@ -98,8 +98,8 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			log.LogAttrs(ctx,
 				slog.LevelInfo,
 				"restarted requesting",
-				slog.Int("oldPRM", int(maxRequestCount)),
-				slog.Int("newPRM", int(newMaxRequestCount)))
+				slog.Int("old_rpm", int(maxRequestCount)),
+				slog.Int("new_rpm", int(newMaxRequestCount)))
 		}
 	}
 }
