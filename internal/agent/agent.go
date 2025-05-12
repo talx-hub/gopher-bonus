@@ -71,6 +71,7 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			close(a.responsesCh)
 			return
 		case rateData = <-rateDataCh:
+			wg.Wait()
 			watcher.Stop()
 			timer = time.NewTimer(rateData.RetryAfter)
 		case <-timer.C:
