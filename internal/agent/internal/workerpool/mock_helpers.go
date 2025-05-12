@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,8 +21,8 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 	mockClient := mocks.NewMockAccrualClient(t)
 	mockClient.
 		EXPECT().
-		GetOrderInfo(mock.Anything).
-		RunAndReturn(func(orderID string) (model.DTOAccrualInfo, error) {
+		GetOrderInfo(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, orderID string) (model.DTOAccrualInfo, error) {
 			if strings.HasPrefix(orderID, "2") {
 				accrual, err := strconv.Atoi(orderID)
 				if err != nil {

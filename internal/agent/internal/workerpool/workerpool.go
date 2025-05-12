@@ -12,7 +12,7 @@ import (
 )
 
 type AccrualClient interface {
-	GetOrderInfo(orderID string) (model.DTOAccrualInfo, error)
+	GetOrderInfo(ctx context.Context, orderID string) (model.DTOAccrualInfo, error)
 }
 
 type AccrualSemaphore interface {
@@ -87,13 +87,20 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 				continue
 			}
 			pool.RequestCounter <- struct{}{}
-			data, err := pool.Client.GetOrderInfo(strconv.FormatUint(orderID, 10))
+
+			data, err := pool.Client.GetOrderInfo(
+				ctx,
+				strconv.FormatUint(orderID, 10))
 			pool.Sema.Release()
 			if err != nil {
 				// TODO: log
 				pool.Results <- pool.dummy(orderID, model.StatusCalculatorFailed)
+
+				if ctx.Err() != nil {
+					return
+				}
 				var tmrErr *serviceerrs.TooManyRequestsError
-				if ctx.Err() == nil && errors.As(err, &tmrErr) {
+				if errors.As(err, &tmrErr) {
 					cancelAll()
 					pool.RateDataCh <- *tmrErr
 					return

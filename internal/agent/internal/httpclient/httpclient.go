@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,9 +29,9 @@ func New(accrualAddress string) *HTTPClient {
 	}
 }
 
-func (c *HTTPClient) GetOrderInfo(orderID string,
+func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 ) (model.DTOAccrualInfo, error) {
-	u := url.URL{
+	path := url.URL{
 		Scheme: "http",
 		Host:   c.accrualAddress,
 		Path:   "/api/orders/" + orderID,
@@ -39,7 +40,7 @@ func (c *HTTPClient) GetOrderInfo(orderID string,
 	resp, err := c.client.Get(u.String())
 	if err != nil {
 		return model.DTOAccrualInfo{},
-			fmt.Errorf("request accrual error: %w", err)
+			fmt.Errorf("failed to send request to Accrual: %w", err)
 	}
 	body, err := io.ReadAll(resp.Body)
 	defer func() {
@@ -50,7 +51,7 @@ func (c *HTTPClient) GetOrderInfo(orderID string,
 	}()
 	if err != nil {
 		return model.DTOAccrualInfo{},
-			fmt.Errorf("request read body error: %w", err)
+			fmt.Errorf("failed to read the body: %w", err)
 	}
 
 	data, err := c.handleRequestData(resp, body)
@@ -90,10 +91,10 @@ func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
 				fmt.Errorf("retry after atoi failed: %w", err)
 		}
 
-		rpm, err := c.parseTooManyRequestsBody(body)
+		rpm, err := c.parseBody(body)
 		if err != nil {
 			return model.DTOAccrualInfo{},
-				fmt.Errorf("failed to parse N requests allowed: %w", err)
+				fmt.Errorf("failed to parse the body: %w", err)
 		}
 
 		return model.DTOAccrualInfo{},
@@ -102,16 +103,16 @@ func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
 				RPM:        rpm,
 			}
 	case http.StatusInternalServerError:
-		// TODO: log
-		fmt.Println("Server error. Try again later.")
+		return model.DTOAccrualInfo{},
+			fmt.Errorf("accrual service error\nBody: %s", string(body))
 	}
 
-	// TODO: log
 	return model.DTOAccrualInfo{},
-		fmt.Errorf("unexpected status: %d\nBody: %s", resp.StatusCode, string(body))
+		fmt.Errorf("unexpected status: %d\nBody: %s",
+			resp.StatusCode, string(body))
 }
 
-func (c *HTTPClient) parseTooManyRequestsBody(b []byte) (uint64, error) {
+func (c *HTTPClient) parseBody(b []byte) (uint64, error) {
 	msg := string(b)
 	const prefix = "No more than "
 	const suffix = " requests per minute allowed"

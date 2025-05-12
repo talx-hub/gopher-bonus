@@ -29,7 +29,6 @@ func (s *Semaphore) AcquireWithTimeout(timeout time.Duration) error {
 
 	s.m.Lock()
 	if s.blockAcquire {
-		// TODO: log
 		s.m.Unlock()
 		return serviceerrs.ErrSemaphoreAcquireTemporaryUnavailable
 	}
@@ -37,16 +36,13 @@ func (s *Semaphore) AcquireWithTimeout(timeout time.Duration) error {
 
 	select {
 	case <-timer.C:
-		// TODO: log
 		return serviceerrs.ErrSemaphoreTimeoutExceeded
 	case s.semaCh <- struct{}{}:
-		// TODO: log.Trace!
 		return nil
 	}
 }
 
 func (s *Semaphore) Release() {
-	// TODO: log.Trace!
 	s.m.Lock()
 	defer s.m.Unlock()
 

@@ -5,6 +5,8 @@
 package mocks
 
 import (
+	"context"
+
 	mock "github.com/stretchr/testify/mock"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 )
@@ -37,8 +39,8 @@ func (_m *MockAccrualClient) EXPECT() *MockAccrualClient_Expecter {
 }
 
 // GetOrderInfo provides a mock function for the type MockAccrualClient
-func (_mock *MockAccrualClient) GetOrderInfo(orderID string) (model.DTOAccrualInfo, error) {
-	ret := _mock.Called(orderID)
+func (_mock *MockAccrualClient) GetOrderInfo(ctx context.Context, orderID string) (model.DTOAccrualInfo, error) {
+	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrderInfo")
@@ -46,16 +48,16 @@ func (_mock *MockAccrualClient) GetOrderInfo(orderID string) (model.DTOAccrualIn
 
 	var r0 model.DTOAccrualInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string) (model.DTOAccrualInfo, error)); ok {
-		return returnFunc(orderID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (model.DTOAccrualInfo, error)); ok {
+		return returnFunc(ctx, orderID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string) model.DTOAccrualInfo); ok {
-		r0 = returnFunc(orderID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) model.DTOAccrualInfo); ok {
+		r0 = returnFunc(ctx, orderID)
 	} else {
 		r0 = ret.Get(0).(model.DTOAccrualInfo)
 	}
-	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
-		r1 = returnFunc(orderID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, orderID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -68,14 +70,15 @@ type MockAccrualClient_GetOrderInfo_Call struct {
 }
 
 // GetOrderInfo is a helper method to define mock.On call
+//   - ctx
 //   - orderID
-func (_e *MockAccrualClient_Expecter) GetOrderInfo(orderID interface{}) *MockAccrualClient_GetOrderInfo_Call {
-	return &MockAccrualClient_GetOrderInfo_Call{Call: _e.mock.On("GetOrderInfo", orderID)}
+func (_e *MockAccrualClient_Expecter) GetOrderInfo(ctx interface{}, orderID interface{}) *MockAccrualClient_GetOrderInfo_Call {
+	return &MockAccrualClient_GetOrderInfo_Call{Call: _e.mock.On("GetOrderInfo", ctx, orderID)}
 }
 
-func (_c *MockAccrualClient_GetOrderInfo_Call) Run(run func(orderID string)) *MockAccrualClient_GetOrderInfo_Call {
+func (_c *MockAccrualClient_GetOrderInfo_Call) Run(run func(ctx context.Context, orderID string)) *MockAccrualClient_GetOrderInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -85,7 +88,7 @@ func (_c *MockAccrualClient_GetOrderInfo_Call) Return(dTOAccrualInfo model.DTOAc
 	return _c
 }
 
-func (_c *MockAccrualClient_GetOrderInfo_Call) RunAndReturn(run func(orderID string) (model.DTOAccrualInfo, error)) *MockAccrualClient_GetOrderInfo_Call {
+func (_c *MockAccrualClient_GetOrderInfo_Call) RunAndReturn(run func(ctx context.Context, orderID string) (model.DTOAccrualInfo, error)) *MockAccrualClient_GetOrderInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
