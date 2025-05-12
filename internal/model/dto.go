@@ -7,6 +7,7 @@ const (
 	StatusCalculatorInvalid    AccrualStatus = "INVALID"
 	StatusCalculatorProcessing AccrualStatus = "PROCESSING"
 	StatusCalculatorProcessed  AccrualStatus = "PROCESSED"
+	StatusCalculatorNoContent  AccrualStatus = "NO_CONTENT"
 	StatusCalculatorFailed     AccrualStatus = "CALCULATOR_FAILED"
 	StatusAgentFailed          AccrualStatus = "AGENT_FAILED"
 )

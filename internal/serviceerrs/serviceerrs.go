@@ -12,6 +12,8 @@ var ErrSemaphoreTimeoutExceeded = errors.New(
 var ErrSemaphoreAcquireTemporaryUnavailable = errors.New(
 	"semaphore acquire temporary unavailable")
 
+var ErrNoContent = errors.New("no content")
+
 type TooManyRequestsError struct {
 	RetryAfter time.Duration
 	RPM        uint64

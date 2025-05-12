@@ -69,11 +69,13 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 	}
 
 	data, err := c.handleRequestData(resp, body)
-	if err == nil || errors.Is(err, &serviceerrs.TooManyRequestsError{}) {
+	if err == nil ||
+		errors.Is(err, &serviceerrs.TooManyRequestsError{}) ||
+		errors.Is(err, serviceerrs.ErrNoContent) {
 		return data, err
 	}
 
-	return data, nil
+	return data, fmt.Errorf("request accrual failed: %w", err)
 }
 
 func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
@@ -91,8 +93,7 @@ func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
 		}
 		return data, nil
 	case http.StatusNoContent:
-		return model.DTOAccrualInfo{},
-			errors.New("no content for this order")
+		return model.DTOAccrualInfo{}, serviceerrs.ErrNoContent
 	case http.StatusTooManyRequests:
 		retryAfter := resp.Header.Get("Retry-After")
 		if retryAfter == "" {

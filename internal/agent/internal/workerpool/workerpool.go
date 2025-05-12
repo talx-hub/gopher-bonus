@@ -78,6 +78,8 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 	defer pool.WaitGroup.Done()
 
 	log := logger.FromContext(ctx).With("module", "worker pool")
+	defer log.LogAttrs(ctx, slog.LevelInfo, "worker stopped")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -108,13 +110,17 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 				LogAttrs(ctx, slog.LevelDebug, "release")
 
 			if err != nil {
-				pool.Results <- pool.dummy(orderID, model.StatusCalculatorFailed)
+				if errors.Is(err, serviceerrs.ErrNoContent) {
+					pool.Results <- pool.dummy(orderID, model.StatusCalculatorNoContent)
+					continue
+				}
 
-				log.LogAttrs(ctx, slog.LevelError,
-					"failed to get order info", slog.Any("error", err))
+				pool.Results <- pool.dummy(orderID, model.StatusCalculatorFailed)
 				if ctx.Err() != nil {
 					return
 				}
+				log.LogAttrs(ctx, slog.LevelError,
+					"failed to get order info", slog.Any("error", err))
 				var tmrErr *serviceerrs.TooManyRequestsError
 				if errors.As(err, &tmrErr) {
 					cancelAll()
