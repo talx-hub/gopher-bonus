@@ -22,6 +22,6 @@ func (h *HTTPHandler) GetBalance(w http.ResponseWriter, r *http.Request) {}
 
 func (h *HTTPHandler) Withdraw(w http.ResponseWriter, r *http.Request) {}
 
-func (h *HTTPHandler) GetInfo(w http.ResponseWriter, r *http.Request) {}
+func (h *HTTPHandler) GetStatistics(w http.ResponseWriter, r *http.Request) {}
 
 func (h *HTTPHandler) Ping(w http.ResponseWriter, r *http.Request) {}

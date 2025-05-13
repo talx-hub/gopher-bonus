@@ -26,15 +26,31 @@ func New(cfg *config.Config, log *slog.Logger) *CustomRouter {
 	return router
 }
 
-type Handler interface {
+type AuthHandler interface {
 	Register(w http.ResponseWriter, r *http.Request)
 	Login(w http.ResponseWriter, r *http.Request)
+}
+
+type OrdersHandler interface {
 	GetOrders(w http.ResponseWriter, r *http.Request)
 	PostOrders(w http.ResponseWriter, r *http.Request)
+}
+
+type BalanceHandler interface {
 	GetBalance(w http.ResponseWriter, r *http.Request)
 	Withdraw(w http.ResponseWriter, r *http.Request)
-	GetInfo(w http.ResponseWriter, r *http.Request)
+	GetStatistics(w http.ResponseWriter, r *http.Request)
+}
+
+type HealthHandler interface {
 	Ping(w http.ResponseWriter, r *http.Request)
+}
+
+type Handler interface {
+	AuthHandler
+	OrdersHandler
+	BalanceHandler
+	HealthHandler
 }
 
 func (cr *CustomRouter) SetRouter(h Handler) {
@@ -58,7 +74,7 @@ func (cr *CustomRouter) SetRouter(h Handler) {
 					Post("/", h.Withdraw)
 			})
 		})
-		r.Get("/withdrawals", h.GetInfo)
+		r.Get("/withdrawals", h.GetStatistics)
 	})
 	cr.router.Get("/ping", h.Ping)
 }
