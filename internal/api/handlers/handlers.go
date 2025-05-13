@@ -7,7 +7,7 @@ import (
 )
 
 type HTTPHandler struct {
-	model.Repository
+	_ model.Repository
 }
 
 func (h *HTTPHandler) Register(w http.ResponseWriter, r *http.Request) {}

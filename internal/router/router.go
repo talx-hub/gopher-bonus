@@ -77,6 +77,12 @@ func (cr *CustomRouter) SetRouter(h Handler) {
 		r.Get("/withdrawals", h.GetStatistics)
 	})
 	cr.router.Get("/ping", h.Ping)
+
+	cr.router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w,
+			http.StatusText(http.StatusMethodNotAllowed),
+			http.StatusMethodNotAllowed)
+	})
 }
 
 func (cr *CustomRouter) GetRouter() *chi.Mux {
