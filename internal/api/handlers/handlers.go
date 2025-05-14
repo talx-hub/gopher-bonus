@@ -1,8 +1,14 @@
 package handlers
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
+
+	"github.com/talx-hub/gopher-bonus/internal/api/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model/bonus"
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
@@ -11,19 +17,48 @@ import (
 type GeneralHandler struct{}
 
 type UserHandler struct {
-	repo   user.Repository
-	secret string
+	repo user.Repository
 }
 
 type OrderHandler struct {
-	repo order.Repository
+	_ order.Repository
 }
 
 type TransactionHandler struct {
-	repo bonus.Repository
+	_ bonus.Repository
 }
 
-func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {}
+func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
+	data := dto.User{}
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	hasher := sha256.New()
+	hasher.Write([]byte(data.Password))
+	loginHash := hex.EncodeToString(hasher.Sum(nil))
+	if _, err = h.repo.FindByLogin(r.Context(), loginHash); err == nil {
+		http.Error(w, "User already exists", http.StatusConflict)
+	}
+
+	hasher.Reset()
+	hasher.Write([]byte(data.Password))
+	passwordHash := hex.EncodeToString(hasher.Sum(nil))
+
+	err = h.repo.Create(r.Context(), &user.User{
+		ID:           uuid.NewString(),
+		LoginHash:    loginHash,
+		PasswordHash: passwordHash,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
 
 func (h *GeneralHandler) Login(w http.ResponseWriter, r *http.Request) {}
 
