@@ -3,25 +3,38 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/model/bonus"
+	"github.com/talx-hub/gopher-bonus/internal/model/order"
+	"github.com/talx-hub/gopher-bonus/internal/model/user"
 )
 
-type HTTPHandler struct {
-	_ model.Repository
+type GeneralHandler struct{}
+
+type UserHandler struct {
+	repo   user.Repository
+	secret string
 }
 
-func (h *HTTPHandler) Register(w http.ResponseWriter, r *http.Request) {}
+type OrderHandler struct {
+	repo order.Repository
+}
 
-func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {}
+type TransactionHandler struct {
+	repo bonus.Repository
+}
 
-func (h *HTTPHandler) GetOrders(w http.ResponseWriter, r *http.Request) {}
+func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {}
 
-func (h *HTTPHandler) PostOrders(w http.ResponseWriter, r *http.Request) {}
+func (h *GeneralHandler) Login(w http.ResponseWriter, r *http.Request) {}
 
-func (h *HTTPHandler) GetBalance(w http.ResponseWriter, r *http.Request) {}
+func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {}
 
-func (h *HTTPHandler) Withdraw(w http.ResponseWriter, r *http.Request) {}
+func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {}
 
-func (h *HTTPHandler) GetStatistics(w http.ResponseWriter, r *http.Request) {}
+func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) {}
 
-func (h *HTTPHandler) Ping(w http.ResponseWriter, r *http.Request) {}
+func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {}
+
+func (h *TransactionHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {}
+
+func (h *GeneralHandler) Ping(w http.ResponseWriter, r *http.Request) {}

@@ -30,8 +30,8 @@ func (h) Login(w http.ResponseWriter, r *http.Request) {
 func (h) GetOrders(w http.ResponseWriter, r *http.Request) {
 	stubHandler{name: "get_orders"}.ServeHTTP(w, r)
 }
-func (h) PostOrders(w http.ResponseWriter, r *http.Request) {
-	stubHandler{name: "post_orders"}.ServeHTTP(w, r)
+func (h) PostOrder(w http.ResponseWriter, r *http.Request) {
+	stubHandler{name: "post_order"}.ServeHTTP(w, r)
 }
 func (h) GetBalance(w http.ResponseWriter, r *http.Request) {
 	stubHandler{name: "get_balance"}.ServeHTTP(w, r)
@@ -39,8 +39,8 @@ func (h) GetBalance(w http.ResponseWriter, r *http.Request) {
 func (h) Withdraw(w http.ResponseWriter, r *http.Request) {
 	stubHandler{name: "withdraw"}.ServeHTTP(w, r)
 }
-func (h) GetStatistics(w http.ResponseWriter, r *http.Request) {
-	stubHandler{name: "get_statistics"}.ServeHTTP(w, r)
+func (h) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
+	stubHandler{name: "get_withdrawals"}.ServeHTTP(w, r)
 }
 func (h) Ping(w http.ResponseWriter, r *http.Request) {
 	stubHandler{name: "ping"}.ServeHTTP(w, r)
@@ -61,10 +61,10 @@ func TestCustomRouter_Route_happyTests(t *testing.T) {
 		{http.MethodPost, "/api/user/register", "register", http.StatusTeapot},
 		{http.MethodPost, "/api/user/login", "login", http.StatusTeapot},
 		{http.MethodGet, "/api/user/orders", "get_orders", http.StatusTeapot},
-		{http.MethodPost, "/api/user/orders", "post_orders", http.StatusTeapot},
+		{http.MethodPost, "/api/user/orders", "post_order", http.StatusTeapot},
 		{http.MethodGet, "/api/user/balance", "get_balance", http.StatusTeapot},
 		{http.MethodPost, "/api/user/balance/withdraw", "withdraw", http.StatusTeapot},
-		{http.MethodGet, "/api/user/withdrawals", "get_statistics", http.StatusTeapot},
+		{http.MethodGet, "/api/user/withdrawals", "get_withdrawals", http.StatusTeapot},
 		{http.MethodGet, "/ping", "ping", http.StatusTeapot},
 	}
 

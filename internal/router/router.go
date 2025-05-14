@@ -32,14 +32,14 @@ type AuthHandler interface {
 }
 
 type OrdersHandler interface {
+	PostOrder(w http.ResponseWriter, r *http.Request)
 	GetOrders(w http.ResponseWriter, r *http.Request)
-	PostOrders(w http.ResponseWriter, r *http.Request)
 }
 
 type BalanceHandler interface {
-	GetBalance(w http.ResponseWriter, r *http.Request)
 	Withdraw(w http.ResponseWriter, r *http.Request)
-	GetStatistics(w http.ResponseWriter, r *http.Request)
+	GetBalance(w http.ResponseWriter, r *http.Request)
+	GetWithdrawals(w http.ResponseWriter, r *http.Request)
 }
 
 type HealthHandler interface {
@@ -63,7 +63,7 @@ func (cr *CustomRouter) SetRouter(h Handler) {
 
 		r.Route("/orders", func(r chi.Router) {
 			r.With(middleware.AllowContentType("text/plain")).
-				Post("/", h.PostOrders)
+				Post("/", h.PostOrder)
 			r.Get("/", h.GetOrders)
 		})
 
@@ -74,7 +74,7 @@ func (cr *CustomRouter) SetRouter(h Handler) {
 					Post("/", h.Withdraw)
 			})
 		})
-		r.Get("/withdrawals", h.GetStatistics)
+		r.Get("/withdrawals", h.GetWithdrawals)
 	})
 	cr.router.Get("/ping", h.Ping)
 
