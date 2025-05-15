@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -25,6 +26,7 @@ type UserRepository interface {
 }
 
 type AuthHandler struct {
+	logger slog.Logger
 	repo   UserRepository
 	secret string
 }
