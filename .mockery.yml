@@ -1,10 +1,13 @@
 template: testify
+recursive: true
+dir: '{{.InterfaceDir}}/mocks'
+filename: 'mock_{{.InterfaceName}}.go'
+structname: "Mock{{.InterfaceName}}"
+pkgname: mocks
 packages:
-  github.com/talx-hub/gopher-bonus:
+  github.com/talx-hub/gopher-bonus/internal/agent/:
     config:
-      recursive: true
       all: true
-      dir: '{{.InterfaceDir}}/mocks'
-      filename: 'mock_{{.InterfaceName}}.go'
-      structname: "Mock{{.InterfaceName}}"
-      pkgname: mocks
+  github.com/talx-hub/gopher-bonus/internal/api/:
+    config:
+      all: true

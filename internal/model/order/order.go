@@ -1,7 +1,6 @@
 package order
 
 import (
-	"context"
 	"time"
 )
 
@@ -19,10 +18,4 @@ type Order struct {
 	Status    Status    `json:"status"`
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
-}
-
-type Repository interface {
-	Create(context.Context, Order) error
-	FindByID(context.Context, string) (*Order, error)
-	FindByUserID(context.Context, string) (*Order, error)
 }

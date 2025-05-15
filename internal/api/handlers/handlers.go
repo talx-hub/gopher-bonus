@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -16,17 +17,37 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/utils/auth"
 )
 
+type UserRepository interface {
+	Create(ctx context.Context, u *user.User) error
+	Exists(ctx context.Context, login string) bool
+	FindByLogin(ctx context.Context, login string) (*user.User, error)
+	FindByID(ctx context.Context, id string) (*user.User, error)
+}
+
 type AuthHandler struct {
-	repo   user.Repository
+	repo   UserRepository
 	secret string
 }
 
+type OrderRepository interface {
+	Create(context.Context, order.Order) error
+	FindByID(context.Context, string) (*order.Order, error)
+	FindByUserID(context.Context, string) (*order.Order, error)
+}
+
 type OrderHandler struct {
-	_ order.Repository
+	_ OrderRepository
+}
+
+type BonusRepository interface {
+	CreateTransaction(ctx context.Context, t *bonus.Transaction) error
+	ListTransactionsByUser(
+		ctx context.Context, userID string, tp bonus.TransactionType,
+	) ([]bonus.Transaction, error)
 }
 
 type TransactionHandler struct {
-	_ bonus.Repository
+	_ BonusRepository
 }
 
 type GeneralHandler struct{}
@@ -38,12 +59,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if err = data.IsValid(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	hasher := sha256.New()
-	hasher.Write([]byte(data.Password))
+	hasher.Write([]byte(data.Login))
 	loginHash := hex.EncodeToString(hasher.Sum(nil))
-	if _, err = h.repo.FindByLogin(r.Context(), loginHash); err == nil {
+	if h.repo.Exists(r.Context(), loginHash) {
 		http.Error(w, "User already exists", http.StatusConflict)
+		return
 	}
 
 	hasher.Reset()
@@ -80,11 +106,18 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	hasher := sha256.New()
 	hasher.Write([]byte(data.Login))
-	loginHash := hasher.Sum(nil)
+	loginHash := hex.EncodeToString(hasher.Sum(nil))
 	var u *user.User
-	if u, err =
-		h.repo.FindByLogin(r.Context(), hex.EncodeToString(loginHash)); err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	if u, err = h.repo.FindByLogin(r.Context(), loginHash); err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to find user",
+			slog.String("login", data.Login),
+			slog.String("loginHash", loginHash))
+
+		http.Error(w,
+			"login or password is incorrect",
+			http.StatusUnauthorized)
 		return
 	}
 
@@ -99,7 +132,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !hmac.Equal(passwordHash, storedHash) {
 		http.Error(w,
-			"email or password is incorrect",
+			"login or password is incorrect",
 			http.StatusUnauthorized)
 		return
 	}
