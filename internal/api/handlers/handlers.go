@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -26,7 +27,7 @@ type UserRepository interface {
 }
 
 type AuthHandler struct {
-	logger slog.Logger
+	logger *slog.Logger
 	repo   UserRepository
 	secret string
 }
@@ -105,6 +106,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	unauthorizedErr := errors.New("login or password is incorrect")
+	if err = data.IsValid(); err != nil {
+		http.Error(w, unauthorizedErr.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	hasher := sha256.New()
 	hasher.Write([]byte(data.Login))
@@ -117,9 +123,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			slog.String("login", data.Login),
 			slog.String("loginHash", loginHash))
 
-		http.Error(w,
-			"login or password is incorrect",
-			http.StatusUnauthorized)
+		http.Error(w, unauthorizedErr.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -133,9 +137,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !hmac.Equal(passwordHash, storedHash) {
-		http.Error(w,
-			"login or password is incorrect",
-			http.StatusUnauthorized)
+		http.Error(w, unauthorizedErr.Error(), http.StatusUnauthorized)
 		return
 	}
 
