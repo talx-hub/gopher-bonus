@@ -6,16 +6,18 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
 const TokenExpire = 3 * time.Hour
 
-func buildJWTString(id string, secret []byte) (string, error) {
-	type Claims struct {
-		jwt.RegisteredClaims
-		UserID string
-	}
+type Claims struct {
+	jwt.RegisteredClaims
+	UserID string
+}
 
+func buildJWTString(id string, secret []byte) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		Claims{
 			RegisteredClaims: jwt.RegisteredClaims{
@@ -43,4 +45,22 @@ func Authenticate(id string, secret []byte) (http.Cookie, error) {
 		MaxAge:   0,
 		HttpOnly: true,
 	}, nil
+}
+
+func CheckToken(tokenString string, secret []byte) (Claims, error) {
+	claims := &Claims{}
+	_, err := jwt.ParseWithClaims(
+		tokenString, claims,
+		func(token *jwt.Token) (interface{}, error) {
+			return secret, nil
+		})
+	if err != nil {
+		return Claims{}, fmt.Errorf("failed to parse token %w", err)
+	}
+	tokenExpired := claims.ExpiresAt.Before(time.Now())
+	if tokenExpired {
+		return Claims{}, serviceerrs.ErrTokenExpired
+	}
+
+	return *claims, nil
 }
