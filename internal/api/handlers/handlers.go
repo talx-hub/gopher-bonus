@@ -44,8 +44,9 @@ type OrderRepository interface {
 }
 
 type OrderHandler struct {
-	logger *slog.Logger
-	repo   OrderRepository
+	logger    *slog.Logger
+	orderRepo OrderRepository
+	userRepo  UserRepository
 }
 
 type BonusRepository interface {
@@ -222,13 +223,30 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed userID retrieve from context")
+			"failed retrieve userID from context")
 		http.Error(w, "unexpected server error, try to relogin", http.StatusInternalServerError)
 		return
 	}
-	o, err := h.repo.FindByID(r.Context(), orderID)
+	_, err = h.userRepo.FindByID(r.Context(), userID)
 	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
-		err = h.repo.Create(r.Context(), order.Order{
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to find retrieved userID in UserRepo")
+		http.Error(w, "failed to find user, try to relogin", http.StatusInternalServerError)
+		return
+	} else if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"unexpected UserRepo failure",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	o, err := h.orderRepo.FindByID(r.Context(), orderID)
+	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
+		err = h.orderRepo.Create(r.Context(), order.Order{
 			CreatedAt: time.Now(),
 			Status:    order.StatusNew,
 			ID:        orderID,

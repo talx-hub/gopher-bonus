@@ -14,9 +14,44 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/talx-hub/gopher-bonus/internal/api/handlers/mocks"
+	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
+
+func testAuthHandlers(t *testing.T,
+	endpoint string,
+	handlerFunc http.HandlerFunc,
+	login, password string,
+	wantToken bool,
+	wantCode int,
+) {
+	t.Helper()
+
+	reqBody := fmt.Sprintf(`{"login":%s, "password":%s}`,
+		login, password)
+	req := httptest.NewRequest(
+		http.MethodPost, endpoint, strings.NewReader(reqBody))
+	rr := httptest.NewRecorder()
+	handlerFunc(rr, req)
+
+	res := rr.Result()
+	err := res.Body.Close()
+	require.NoError(t, err)
+
+	const cookieName = "jwt-token"
+	hasToken := false
+	for _, c := range res.Cookies() {
+		if c.Name == cookieName && len(c.Value) != 0 {
+			hasToken = true
+			break
+		}
+	}
+
+	assert.Equal(t, wantToken, hasToken)
+	assert.Equal(t, wantCode, rr.Code)
+}
 
 func TestAuthHandler_Register(t *testing.T) {
 	tests := []struct {
@@ -119,6 +154,7 @@ func TestAuthHandler_Register(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testAuthHandlers(t,
+				"/register",
 				authHandler.Register,
 				tt.login, tt.password,
 				tt.wantToken, tt.wantCode)
@@ -228,6 +264,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testAuthHandlers(t,
+				"/login",
 				authHandler.Login,
 				tt.login, tt.password,
 				tt.wantToken, tt.wantCode)
@@ -297,6 +334,7 @@ func TestAuthHandler_Login_not_use_repo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testAuthHandlers(t,
+				"/login",
 				authHandler.Login,
 				tt.login, tt.password,
 				tt.wantToken, tt.wantCode)
@@ -306,35 +344,142 @@ func TestAuthHandler_Login_not_use_repo(t *testing.T) {
 		t, "FindByLogin", mock.Anything, mock.Anything)
 }
 
-func testAuthHandlers(t *testing.T,
-	handlerFunc http.HandlerFunc,
-	login, password string,
-	wantToken bool,
-	wantCode int,
-) {
-	t.Helper()
-
-	reqBody := fmt.Sprintf(`{"login":%s, "password":%s}`,
-		login, password)
-	req := httptest.NewRequest(
-		http.MethodPost, "/register", strings.NewReader(reqBody))
-	rr := httptest.NewRecorder()
-	handlerFunc(rr, req)
-
-	res := rr.Result()
-	if err := res.Body.Close(); err != nil {
-		require.NoError(t, err)
+func TestOrderHandler_PostOrder(t *testing.T) {
+	titleToOrderID := map[string]string{
+		"not-found":              "1",
+		"found":                  "2",
+		"does-not-matter":        "3",
+		"break-the-order-create": "4",
+		"break-the-order-find":   "5",
+	}
+	tests := []struct {
+		name     string
+		userID   string
+		body     string
+		wantCode int
+	}{
+		{
+			"test Accepted",
+			"user",
+			titleToOrderID["not-found"],
+			http.StatusAccepted,
+		},
+		{
+			"test OK",
+			"correct-user",
+			titleToOrderID["found"],
+			http.StatusOK,
+		},
+		{
+			"test Conflict",
+			"wrong-user",
+			titleToOrderID["found"],
+			http.StatusConflict,
+		},
+		{
+			"test retrieve userID from context failure",
+			"dont-put-to-ctx",
+			titleToOrderID["does-not-mater"],
+			http.StatusInternalServerError,
+		},
+		{
+			"test find userID in UserRepo failure",
+			"user-NOT-exist",
+			titleToOrderID["does-not-mater"],
+			http.StatusInternalServerError,
+		},
+		{
+			"test unexpected UserRepo failure",
+			"break-the-user-repo",
+			titleToOrderID["does-not-mater"],
+			http.StatusInternalServerError,
+		},
+		{
+			"test unexpected OrderRepo Create failure",
+			"user",
+			titleToOrderID["break-the-order-create"],
+			http.StatusInternalServerError,
+		},
+		{
+			"test unexpected OrderRepo Find failure",
+			"user",
+			titleToOrderID["break-the-order-find"],
+			http.StatusInternalServerError,
+		},
+		{
+			"test bad orderID",
+			"user",
+			"BAD",
+			http.StatusBadRequest,
+		},
 	}
 
-	const cookieName = "jwt-token"
-	hasToken := false
-	for _, c := range res.Cookies() {
-		if c.Name == cookieName && len(c.Value) != 0 {
-			hasToken = true
-			break
-		}
+	orderRepo := mocks.NewMockOrderRepository(t)
+	orderRepo.On("FindByID", mock.Anything, titleToOrderID["not-found"]).
+		Return(&order.Order{}, serviceerrs.ErrNotFound)
+	orderRepo.On("FindByID", mock.Anything, titleToOrderID["found"]).
+		Return(&order.Order{
+			ID:     "found",
+			UserID: "correct-user",
+		}, nil)
+	orderRepo.On("FindByID", mock.Anything,
+		titleToOrderID["break-the-order-create"]).
+		Return(&order.Order{}, serviceerrs.ErrNotFound)
+	orderRepo.On("FindByID", mock.Anything,
+		titleToOrderID["break-the-order-find"]).
+		Return(&order.Order{}, serviceerrs.ErrUnexpected)
+	orderRepo.On("Create", mock.Anything, mock.Anything).
+		Return(func(_ context.Context, o order.Order) error {
+			if o.ID == titleToOrderID["break-the-order-create"] {
+				return serviceerrs.ErrUnexpected
+			}
+			return nil
+		})
+
+	userRepo := mocks.NewMockUserRepository(t)
+	userRepo.On("FindByID", mock.Anything, "user").
+		Return(&user.User{}, nil)
+	userRepo.On("FindByID", mock.Anything, "correct-user").
+		Return(&user.User{}, nil)
+	userRepo.On("FindByID", mock.Anything, "wrong-user").
+		Return(&user.User{}, nil)
+	userRepo.On("FindByID", mock.Anything, "user-NOT-exist").
+		Return(&user.User{}, serviceerrs.ErrNotFound)
+	userRepo.On("FindByID", mock.Anything, "break-the-user-repo").
+		Return(&user.User{}, serviceerrs.ErrUnexpected)
+	userRepo.On("FindByID", mock.Anything, mock.Anything).
+		Return(&user.User{}, nil)
+
+	h := OrderHandler{
+		logger:    slog.Default(),
+		orderRepo: orderRepo,
+		userRepo:  userRepo,
 	}
 
-	assert.Equal(t, wantToken, hasToken)
-	assert.Equal(t, wantCode, rr.Code)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(
+				http.MethodPost, "/order", strings.NewReader(tt.body))
+			if tt.userID != "dont-put-to-ctx" {
+				userIDCtx := context.WithValue(
+					req.Context(), model.KeyContextUserID, tt.userID)
+				req = req.WithContext(userIDCtx)
+			}
+			rr := httptest.NewRecorder()
+			h.PostOrder(rr, req)
+			res := rr.Result()
+			err := res.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantCode, res.StatusCode)
+		})
+	}
+
+	orderRepo.AssertNotCalled(t, "FindByID", mock.Anything, "BAD")
+	orderRepo.AssertNotCalled(t, "FindByID", mock.Anything,
+		titleToOrderID["does-not-mater"])
+	orderRepo.AssertNumberOfCalls(t, "FindByID", 5)
+	orderRepo.AssertNumberOfCalls(t, "Create", 2)
+
+	userRepo.AssertNumberOfCalls(t, "FindByID", 7)
 }
