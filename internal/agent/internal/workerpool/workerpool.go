@@ -120,7 +120,7 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 					return
 				}
 				log.LogAttrs(ctx, slog.LevelError,
-					"failed to get order info", slog.Any("error", err))
+					"failed to get order info", slog.Any(model.KeyLoggerError, err))
 				var tmrErr *serviceerrs.TooManyRequestsError
 				if errors.As(err, &tmrErr) {
 					cancelAll()

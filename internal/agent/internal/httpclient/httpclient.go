@@ -59,7 +59,7 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 				ctx,
 				slog.LevelError,
 				"failed to close the response body",
-				slog.Any("error", err),
+				slog.Any(model.KeyLoggerError, err),
 			)
 		}
 	}()

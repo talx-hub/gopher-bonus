@@ -6,6 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/caarlos0/env/v6"
+
+	"github.com/talx-hub/gopher-bonus/internal/model"
 )
 
 type Config struct {
@@ -39,7 +41,7 @@ func NewBuilder(log *slog.Logger) *Builder {
 func (b *Builder) FromEnv() *Builder {
 	if err := env.Parse(b.cfg); err != nil {
 		b.log.LogAttrs(context.Background(),
-			slog.LevelError, "Failed to parse config", slog.Any("error", err))
+			slog.LevelError, "Failed to parse config", slog.Any(model.KeyLoggerError, err))
 	}
 	return b
 }

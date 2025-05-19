@@ -14,6 +14,12 @@ var ErrSemaphoreAcquireTemporaryUnavailable = errors.New(
 
 var ErrNoContent = errors.New("no content")
 
+var ErrNotFound = errors.New("object not found")
+
+var ErrTokenExpired = errors.New("token expired")
+
+var ErrUnexpected = errors.New("unexpected server error")
+
 type TooManyRequestsError struct {
 	RetryAfter time.Duration
 	RPM        uint64

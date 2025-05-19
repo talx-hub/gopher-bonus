@@ -11,3 +11,6 @@ const HeaderContentType = "Content-Type"
 type ContextKey string
 
 const KeyContextLogger ContextKey = "logger"
+const KeyContextUserID ContextKey = "userID"
+
+const KeyLoggerError = "error"

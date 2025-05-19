@@ -193,7 +193,7 @@ func TestWorkerPool_Start_tooManyRequests(t *testing.T) {
 	}
 
 	triggerJobNo := 28
-	safetyCoeff := 10
+	safetyCoeff := 5
 	requestsCanBeHandled := triggerJobNo + workerCount*safetyCoeff
 	require.NotZero(t, len(counts))
 	require.NotZero(t, calcFails)
