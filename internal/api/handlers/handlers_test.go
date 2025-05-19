@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/talx-hub/gopher-bonus/internal/api/handlers/mocks"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
+	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
 func TestAuthHandler_Register(t *testing.T) {
@@ -190,7 +190,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	repo := mocks.NewMockUserRepository(t)
 	repo.EXPECT().
 		FindByLogin(mock.Anything, hashes["login-not-exist"]).
-		Return(&user.User{}, errors.New("login not found"))
+		Return(&user.User{}, serviceerrs.ErrNotFound)
 
 	repo.EXPECT().
 		FindByLogin(mock.Anything, hashes["login1"]).
