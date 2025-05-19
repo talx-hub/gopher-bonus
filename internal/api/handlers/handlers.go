@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -27,8 +28,8 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, u *user.User) error
 	Exists(ctx context.Context, loginHash string) bool
-	FindByLogin(ctx context.Context, loginHash string) (*user.User, error)
-	FindByID(ctx context.Context, id string) (*user.User, error)
+	FindByLogin(ctx context.Context, loginHash string) (user.User, error)
+	FindByID(ctx context.Context, id string) (user.User, error)
 }
 
 type AuthHandler struct {
@@ -39,8 +40,8 @@ type AuthHandler struct {
 
 type OrderRepository interface {
 	Create(ctx context.Context, o order.Order) error
-	FindByID(ctx context.Context, id string) (*order.Order, error)
-	FindByUserID(ctx context.Context, userID string) (*order.Order, error)
+	FindByID(ctx context.Context, id string) (order.Order, error)
+	FindByUserID(ctx context.Context, userID string) ([]order.Order, error)
 }
 
 type OrderHandler struct {
@@ -192,6 +193,23 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *OrderHandler) retrieveUserID(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value(model.KeyContextUserID).(string)
+	if !ok {
+		return "", errors.New("failed retrieve userID from context")
+	}
+
+	_, err := h.userRepo.FindByID(ctx, userID)
+	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
+		return "", fmt.Errorf(
+			"failed to find retrieved userID in UserRepo: %w", err)
+	} else if err != nil {
+		return "", fmt.Errorf("unexpected UserRepo failure: %w", err)
+	}
+
+	return userID, nil
+}
+
 func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -219,28 +237,15 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userID, ok := r.Context().Value(model.KeyContextUserID).(string)
-	if !ok {
+	userID, err := h.retrieveUserID(r.Context())
+	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed retrieve userID from context")
-		http.Error(w, "unexpected server error, try to relogin", http.StatusInternalServerError)
-		return
-	}
-	_, err = h.userRepo.FindByID(r.Context(), userID)
-	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
-		h.logger.LogAttrs(r.Context(),
-			slog.LevelError,
-			"failed to find retrieved userID in UserRepo")
-		http.Error(w, "failed to find user, try to relogin", http.StatusInternalServerError)
-		return
-	} else if err != nil {
-		h.logger.LogAttrs(r.Context(),
-			slog.LevelError,
-			"unexpected UserRepo failure",
+			"failed retrieve userID from context",
 			slog.Any(model.KeyLoggerError, err),
 		)
-		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(),
+			http.StatusInternalServerError)
 		return
 	}
 
@@ -281,9 +286,50 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusConflict)
 }
 
-func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {}
+func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
+	userID, err := h.retrieveUserID(r.Context())
+	if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed retrieve userID from context",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(),
+			http.StatusInternalServerError)
+		return
+	}
 
-func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) {}
+	orders, err := h.orderRepo.FindByUserID(r.Context(), userID)
+	if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to find orders by userID",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(orders) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err = json.NewEncoder(w).Encode(orders); err != nil {
+		slog.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to write response",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set(model.HeaderContentType, "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
+
+}
 
 func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {}
 
