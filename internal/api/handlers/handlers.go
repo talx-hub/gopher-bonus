@@ -25,6 +25,8 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/utils/auth"
 )
 
+const errRetrieveUserID = "failed retrieve userID from Ctx or check it with UserRepo"
+
 type UserRepository interface {
 	Create(ctx context.Context, u *user.User) error
 	Exists(ctx context.Context, loginHash string) bool
@@ -46,10 +48,11 @@ type OrderRepository interface {
 
 type userRetriever struct{}
 
-func (r *userRetriever) retrieveUserID(ctx context.Context, userRepo UserRepository) (string, error) {
+func (r *userRetriever) retrieveUserID(ctx context.Context, userRepo UserRepository,
+) (string, error) {
 	userID, ok := ctx.Value(model.KeyContextUserID).(string)
 	if !ok {
-		return "", errors.New("failed retrieve userID from context")
+		return "", errors.New("failed retrieve UserID from context")
 	}
 
 	_, err := userRepo.FindByID(ctx, userID)
@@ -249,7 +252,7 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed retrieve userID from context",
+			errRetrieveUserID,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, serviceerrs.ErrUnexpected.Error(),
@@ -299,7 +302,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed retrieve userID from context",
+			errRetrieveUserID,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, serviceerrs.ErrUnexpected.Error(),
@@ -340,7 +343,7 @@ func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed retrieve userID from context",
+			errRetrieveUserID,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, serviceerrs.ErrUnexpected.Error(),
