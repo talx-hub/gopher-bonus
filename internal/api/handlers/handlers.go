@@ -379,8 +379,83 @@ func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {}
+func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	userID, err := h.retrieveUserID(r.Context(), h.userRepo)
+	if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			errRetrieveUserID,
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(),
+			http.StatusInternalServerError)
+		return
+	}
 
-func (h *TransactionHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {}
+	var request dto.WithdrawRequest
+	if err = json.NewDecoder(r.Body).Decode(&request); err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to read the request body",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err = r.Body.Close(); err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to close request body",
+			slog.Any(model.KeyLoggerError, err),
+		)
+	}
+
+	amount, err := model.FromFloat(request.Sum)
+	if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to convert request Sum to bonus.Amount",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = h.bonusRepo.CreateTransaction(r.Context(),
+		&bonus.Transaction{
+			ID:        uuid.NewString(),
+			UserID:    userID,
+			CreatedAt: time.Now(),
+			Type:      bonus.TypeWithdrawal,
+			Amount:    amount,
+		},
+	)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	if errors.Is(err, serviceerrs.ErrInsufficientFunds) {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"not enough bonus amount",
+			slog.String("order", request.OrderID),
+			slog.Float64("requested", request.Sum),
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, err.Error(), http.StatusPaymentRequired)
+		return
+	}
+	h.logger.LogAttrs(r.Context(),
+		slog.LevelError,
+		"unexpected withdrawal error",
+		slog.String("order", request.OrderID),
+		slog.Float64("requested", request.Sum),
+		slog.Any(model.KeyLoggerError, err),
+	)
+	http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+}
+
+func (h *TransactionHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
+
+}
 
 func (h *GeneralHandler) Ping(w http.ResponseWriter, r *http.Request) {}

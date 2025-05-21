@@ -20,6 +20,8 @@ var ErrTokenExpired = errors.New("token expired")
 
 var ErrUnexpected = errors.New("unexpected server error")
 
+var ErrInsufficientFunds = errors.New("insufficient funds")
+
 type TooManyRequestsError struct {
 	RetryAfter time.Duration
 	RPM        uint64
