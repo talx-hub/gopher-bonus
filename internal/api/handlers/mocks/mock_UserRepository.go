@@ -85,8 +85,8 @@ func (_c *MockUserRepository_Create_Call) RunAndReturn(run func(ctx context.Cont
 }
 
 // Exists provides a mock function for the type MockUserRepository
-func (_mock *MockUserRepository) Exists(ctx context.Context, login string) bool {
-	ret := _mock.Called(ctx, login)
+func (_mock *MockUserRepository) Exists(ctx context.Context, loginHash string) bool {
+	ret := _mock.Called(ctx, loginHash)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Exists")
@@ -94,7 +94,7 @@ func (_mock *MockUserRepository) Exists(ctx context.Context, login string) bool 
 
 	var r0 bool
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = returnFunc(ctx, login)
+		r0 = returnFunc(ctx, loginHash)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -108,12 +108,12 @@ type MockUserRepository_Exists_Call struct {
 
 // Exists is a helper method to define mock.On call
 //   - ctx
-//   - login
-func (_e *MockUserRepository_Expecter) Exists(ctx interface{}, login interface{}) *MockUserRepository_Exists_Call {
-	return &MockUserRepository_Exists_Call{Call: _e.mock.On("Exists", ctx, login)}
+//   - loginHash
+func (_e *MockUserRepository_Expecter) Exists(ctx interface{}, loginHash interface{}) *MockUserRepository_Exists_Call {
+	return &MockUserRepository_Exists_Call{Call: _e.mock.On("Exists", ctx, loginHash)}
 }
 
-func (_c *MockUserRepository_Exists_Call) Run(run func(ctx context.Context, login string)) *MockUserRepository_Exists_Call {
+func (_c *MockUserRepository_Exists_Call) Run(run func(ctx context.Context, loginHash string)) *MockUserRepository_Exists_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
@@ -125,30 +125,28 @@ func (_c *MockUserRepository_Exists_Call) Return(b bool) *MockUserRepository_Exi
 	return _c
 }
 
-func (_c *MockUserRepository_Exists_Call) RunAndReturn(run func(ctx context.Context, login string) bool) *MockUserRepository_Exists_Call {
+func (_c *MockUserRepository_Exists_Call) RunAndReturn(run func(ctx context.Context, loginHash string) bool) *MockUserRepository_Exists_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FindByID provides a mock function for the type MockUserRepository
-func (_mock *MockUserRepository) FindByID(ctx context.Context, id string) (*user.User, error) {
+func (_mock *MockUserRepository) FindByID(ctx context.Context, id string) (user.User, error) {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByID")
 	}
 
-	var r0 *user.User
+	var r0 user.User
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*user.User, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (user.User, error)); ok {
 		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *user.User); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) user.User); ok {
 		r0 = returnFunc(ctx, id)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*user.User)
-		}
+		r0 = ret.Get(0).(user.User)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = returnFunc(ctx, id)
@@ -177,38 +175,36 @@ func (_c *MockUserRepository_FindByID_Call) Run(run func(ctx context.Context, id
 	return _c
 }
 
-func (_c *MockUserRepository_FindByID_Call) Return(user1 *user.User, err error) *MockUserRepository_FindByID_Call {
+func (_c *MockUserRepository_FindByID_Call) Return(user1 user.User, err error) *MockUserRepository_FindByID_Call {
 	_c.Call.Return(user1, err)
 	return _c
 }
 
-func (_c *MockUserRepository_FindByID_Call) RunAndReturn(run func(ctx context.Context, id string) (*user.User, error)) *MockUserRepository_FindByID_Call {
+func (_c *MockUserRepository_FindByID_Call) RunAndReturn(run func(ctx context.Context, id string) (user.User, error)) *MockUserRepository_FindByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FindByLogin provides a mock function for the type MockUserRepository
-func (_mock *MockUserRepository) FindByLogin(ctx context.Context, login string) (*user.User, error) {
-	ret := _mock.Called(ctx, login)
+func (_mock *MockUserRepository) FindByLogin(ctx context.Context, loginHash string) (user.User, error) {
+	ret := _mock.Called(ctx, loginHash)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByLogin")
 	}
 
-	var r0 *user.User
+	var r0 user.User
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*user.User, error)); ok {
-		return returnFunc(ctx, login)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (user.User, error)); ok {
+		return returnFunc(ctx, loginHash)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *user.User); ok {
-		r0 = returnFunc(ctx, login)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) user.User); ok {
+		r0 = returnFunc(ctx, loginHash)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*user.User)
-		}
+		r0 = ret.Get(0).(user.User)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, login)
+		r1 = returnFunc(ctx, loginHash)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -222,24 +218,24 @@ type MockUserRepository_FindByLogin_Call struct {
 
 // FindByLogin is a helper method to define mock.On call
 //   - ctx
-//   - login
-func (_e *MockUserRepository_Expecter) FindByLogin(ctx interface{}, login interface{}) *MockUserRepository_FindByLogin_Call {
-	return &MockUserRepository_FindByLogin_Call{Call: _e.mock.On("FindByLogin", ctx, login)}
+//   - loginHash
+func (_e *MockUserRepository_Expecter) FindByLogin(ctx interface{}, loginHash interface{}) *MockUserRepository_FindByLogin_Call {
+	return &MockUserRepository_FindByLogin_Call{Call: _e.mock.On("FindByLogin", ctx, loginHash)}
 }
 
-func (_c *MockUserRepository_FindByLogin_Call) Run(run func(ctx context.Context, login string)) *MockUserRepository_FindByLogin_Call {
+func (_c *MockUserRepository_FindByLogin_Call) Run(run func(ctx context.Context, loginHash string)) *MockUserRepository_FindByLogin_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockUserRepository_FindByLogin_Call) Return(user1 *user.User, err error) *MockUserRepository_FindByLogin_Call {
+func (_c *MockUserRepository_FindByLogin_Call) Return(user1 user.User, err error) *MockUserRepository_FindByLogin_Call {
 	_c.Call.Return(user1, err)
 	return _c
 }
 
-func (_c *MockUserRepository_FindByLogin_Call) RunAndReturn(run func(ctx context.Context, login string) (*user.User, error)) *MockUserRepository_FindByLogin_Call {
+func (_c *MockUserRepository_FindByLogin_Call) RunAndReturn(run func(ctx context.Context, loginHash string) (user.User, error)) *MockUserRepository_FindByLogin_Call {
 	_c.Call.Return(run)
 	return _c
 }

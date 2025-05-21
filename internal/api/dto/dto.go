@@ -21,3 +21,8 @@ func (r *UserRequest) IsValid() error {
 	invalidPasswordErr := passwordvalidator.Validate(r.Password, minEntropyBits)
 	return errors.Join(invalidLoginErr, invalidPasswordErr)
 }
+
+type BalanceResponse struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}

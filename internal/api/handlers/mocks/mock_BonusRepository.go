@@ -8,6 +8,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
+	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/model/bonus"
 )
 
@@ -80,6 +81,67 @@ func (_c *MockBonusRepository_CreateTransaction_Call) Return(err error) *MockBon
 }
 
 func (_c *MockBonusRepository_CreateTransaction_Call) RunAndReturn(run func(ctx context.Context, t *bonus.Transaction) error) *MockBonusRepository_CreateTransaction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBalance provides a mock function for the type MockBonusRepository
+func (_mock *MockBonusRepository) GetBalance(ctx context.Context, userID string) (model.Amount, model.Amount, error) {
+	ret := _mock.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBalance")
+	}
+
+	var r0 model.Amount
+	var r1 model.Amount
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (model.Amount, model.Amount, error)); ok {
+		return returnFunc(ctx, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) model.Amount); ok {
+		r0 = returnFunc(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(model.Amount)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) model.Amount); ok {
+		r1 = returnFunc(ctx, userID)
+	} else {
+		r1 = ret.Get(1).(model.Amount)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = returnFunc(ctx, userID)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockBonusRepository_GetBalance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBalance'
+type MockBonusRepository_GetBalance_Call struct {
+	*mock.Call
+}
+
+// GetBalance is a helper method to define mock.On call
+//   - ctx
+//   - userID
+func (_e *MockBonusRepository_Expecter) GetBalance(ctx interface{}, userID interface{}) *MockBonusRepository_GetBalance_Call {
+	return &MockBonusRepository_GetBalance_Call{Call: _e.mock.On("GetBalance", ctx, userID)}
+}
+
+func (_c *MockBonusRepository_GetBalance_Call) Run(run func(ctx context.Context, userID string)) *MockBonusRepository_GetBalance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockBonusRepository_GetBalance_Call) Return(amount model.Amount, amount1 model.Amount, err error) *MockBonusRepository_GetBalance_Call {
+	_c.Call.Return(amount, amount1, err)
+	return _c
+}
+
+func (_c *MockBonusRepository_GetBalance_Call) RunAndReturn(run func(ctx context.Context, userID string) (model.Amount, model.Amount, error)) *MockBonusRepository_GetBalance_Call {
 	_c.Call.Return(run)
 	return _c
 }

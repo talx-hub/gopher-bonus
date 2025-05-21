@@ -2,6 +2,8 @@ package order
 
 import (
 	"time"
+
+	"github.com/talx-hub/gopher-bonus/internal/model"
 )
 
 type Status string
@@ -14,8 +16,9 @@ const (
 )
 
 type Order struct {
-	CreatedAt time.Time `json:"created_at"`
-	Status    Status    `json:"status"`
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
+	UploadedAt time.Time    `json:"uploaded_at"`
+	Status     Status       `json:"status"`
+	ID         string       `json:"id"`
+	UserID     string       `json:"user_id"`
+	Accrual    model.Amount `json:"accrual,omitempty"`
 }

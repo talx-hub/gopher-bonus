@@ -39,8 +39,8 @@ func (_m *MockOrderRepository) EXPECT() *MockOrderRepository_Expecter {
 }
 
 // Create provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) Create(context1 context.Context, order1 order.Order) error {
-	ret := _mock.Called(context1, order1)
+func (_mock *MockOrderRepository) Create(ctx context.Context, o order.Order) error {
+	ret := _mock.Called(ctx, o)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -48,7 +48,7 @@ func (_mock *MockOrderRepository) Create(context1 context.Context, order1 order.
 
 	var r0 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, order.Order) error); ok {
-		r0 = returnFunc(context1, order1)
+		r0 = returnFunc(ctx, o)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -61,13 +61,13 @@ type MockOrderRepository_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//   - context1
-//   - order1
-func (_e *MockOrderRepository_Expecter) Create(context1 interface{}, order1 interface{}) *MockOrderRepository_Create_Call {
-	return &MockOrderRepository_Create_Call{Call: _e.mock.On("Create", context1, order1)}
+//   - ctx
+//   - o
+func (_e *MockOrderRepository_Expecter) Create(ctx interface{}, o interface{}) *MockOrderRepository_Create_Call {
+	return &MockOrderRepository_Create_Call{Call: _e.mock.On("Create", ctx, o)}
 }
 
-func (_c *MockOrderRepository_Create_Call) Run(run func(context1 context.Context, order1 order.Order)) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_Create_Call) Run(run func(ctx context.Context, o order.Order)) *MockOrderRepository_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(order.Order))
 	})
@@ -79,33 +79,31 @@ func (_c *MockOrderRepository_Create_Call) Return(err error) *MockOrderRepositor
 	return _c
 }
 
-func (_c *MockOrderRepository_Create_Call) RunAndReturn(run func(context1 context.Context, order1 order.Order) error) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_Create_Call) RunAndReturn(run func(ctx context.Context, o order.Order) error) *MockOrderRepository_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FindByID provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) FindByID(context1 context.Context, s string) (*order.Order, error) {
-	ret := _mock.Called(context1, s)
+func (_mock *MockOrderRepository) FindByID(ctx context.Context, id string) (order.Order, error) {
+	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByID")
 	}
 
-	var r0 *order.Order
+	var r0 order.Order
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*order.Order, error)); ok {
-		return returnFunc(context1, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (order.Order, error)); ok {
+		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *order.Order); ok {
-		r0 = returnFunc(context1, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) order.Order); ok {
+		r0 = returnFunc(ctx, id)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*order.Order)
-		}
+		r0 = ret.Get(0).(order.Order)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(context1, s)
+		r1 = returnFunc(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -118,51 +116,51 @@ type MockOrderRepository_FindByID_Call struct {
 }
 
 // FindByID is a helper method to define mock.On call
-//   - context1
-//   - s
-func (_e *MockOrderRepository_Expecter) FindByID(context1 interface{}, s interface{}) *MockOrderRepository_FindByID_Call {
-	return &MockOrderRepository_FindByID_Call{Call: _e.mock.On("FindByID", context1, s)}
+//   - ctx
+//   - id
+func (_e *MockOrderRepository_Expecter) FindByID(ctx interface{}, id interface{}) *MockOrderRepository_FindByID_Call {
+	return &MockOrderRepository_FindByID_Call{Call: _e.mock.On("FindByID", ctx, id)}
 }
 
-func (_c *MockOrderRepository_FindByID_Call) Run(run func(context1 context.Context, s string)) *MockOrderRepository_FindByID_Call {
+func (_c *MockOrderRepository_FindByID_Call) Run(run func(ctx context.Context, id string)) *MockOrderRepository_FindByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByID_Call) Return(order1 *order.Order, err error) *MockOrderRepository_FindByID_Call {
+func (_c *MockOrderRepository_FindByID_Call) Return(order1 order.Order, err error) *MockOrderRepository_FindByID_Call {
 	_c.Call.Return(order1, err)
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByID_Call) RunAndReturn(run func(context1 context.Context, s string) (*order.Order, error)) *MockOrderRepository_FindByID_Call {
+func (_c *MockOrderRepository_FindByID_Call) RunAndReturn(run func(ctx context.Context, id string) (order.Order, error)) *MockOrderRepository_FindByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FindByUserID provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) FindByUserID(context1 context.Context, s string) (*order.Order, error) {
-	ret := _mock.Called(context1, s)
+func (_mock *MockOrderRepository) FindByUserID(ctx context.Context, userID string) ([]order.Order, error) {
+	ret := _mock.Called(ctx, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByUserID")
 	}
 
-	var r0 *order.Order
+	var r0 []order.Order
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*order.Order, error)); ok {
-		return returnFunc(context1, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]order.Order, error)); ok {
+		return returnFunc(ctx, userID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *order.Order); ok {
-		r0 = returnFunc(context1, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []order.Order); ok {
+		r0 = returnFunc(ctx, userID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*order.Order)
+			r0 = ret.Get(0).([]order.Order)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(context1, s)
+		r1 = returnFunc(ctx, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -175,25 +173,25 @@ type MockOrderRepository_FindByUserID_Call struct {
 }
 
 // FindByUserID is a helper method to define mock.On call
-//   - context1
-//   - s
-func (_e *MockOrderRepository_Expecter) FindByUserID(context1 interface{}, s interface{}) *MockOrderRepository_FindByUserID_Call {
-	return &MockOrderRepository_FindByUserID_Call{Call: _e.mock.On("FindByUserID", context1, s)}
+//   - ctx
+//   - userID
+func (_e *MockOrderRepository_Expecter) FindByUserID(ctx interface{}, userID interface{}) *MockOrderRepository_FindByUserID_Call {
+	return &MockOrderRepository_FindByUserID_Call{Call: _e.mock.On("FindByUserID", ctx, userID)}
 }
 
-func (_c *MockOrderRepository_FindByUserID_Call) Run(run func(context1 context.Context, s string)) *MockOrderRepository_FindByUserID_Call {
+func (_c *MockOrderRepository_FindByUserID_Call) Run(run func(ctx context.Context, userID string)) *MockOrderRepository_FindByUserID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByUserID_Call) Return(order1 *order.Order, err error) *MockOrderRepository_FindByUserID_Call {
-	_c.Call.Return(order1, err)
+func (_c *MockOrderRepository_FindByUserID_Call) Return(orders []order.Order, err error) *MockOrderRepository_FindByUserID_Call {
+	_c.Call.Return(orders, err)
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByUserID_Call) RunAndReturn(run func(context1 context.Context, s string) (*order.Order, error)) *MockOrderRepository_FindByUserID_Call {
+func (_c *MockOrderRepository_FindByUserID_Call) RunAndReturn(run func(ctx context.Context, userID string) ([]order.Order, error)) *MockOrderRepository_FindByUserID_Call {
 	_c.Call.Return(run)
 	return _c
 }

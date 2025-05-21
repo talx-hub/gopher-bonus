@@ -226,12 +226,12 @@ func TestAuthHandler_Login(t *testing.T) {
 	repo := mocks.NewMockUserRepository(t)
 	repo.EXPECT().
 		FindByLogin(mock.Anything, hashes["login-not-exist"]).
-		Return(&user.User{}, serviceerrs.ErrNotFound)
+		Return(user.User{}, serviceerrs.ErrNotFound)
 
 	repo.EXPECT().
 		FindByLogin(mock.Anything, hashes["login1"]).
 		Return(
-			&user.User{
+			user.User{
 				LoginHash:    hashes["login1"],
 				PasswordHash: hashes["very-strong-password"],
 			},
@@ -240,7 +240,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	repo.EXPECT().
 		FindByLogin(mock.Anything, hashes["login2"]).
 		Return(
-			&user.User{
+			user.User{
 				LoginHash:    hashes["login2"],
 				PasswordHash: hashes["another-very-strong-password"],
 			},
@@ -249,7 +249,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	repo.EXPECT().
 		FindByLogin(mock.Anything, hashes["login3"]).
 		Return(
-			&user.User{
+			user.User{
 				LoginHash:    hashes["login3"],
 				PasswordHash: hashes["another-very-strong-password"],
 			},
@@ -415,21 +415,24 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 	}
 
 	orderRepo := mocks.NewMockOrderRepository(t)
-	orderRepo.On("FindByID", mock.Anything, titleToOrderID["not-found"]).
-		Return(&order.Order{}, serviceerrs.ErrNotFound)
-	orderRepo.On("FindByID", mock.Anything, titleToOrderID["found"]).
-		Return(&order.Order{
+	orderRepo.EXPECT().
+		FindByID(mock.Anything, titleToOrderID["not-found"]).
+		Return(order.Order{}, serviceerrs.ErrNotFound)
+	orderRepo.EXPECT().
+		FindByID(mock.Anything, titleToOrderID["found"]).
+		Return(order.Order{
 			ID:     "found",
 			UserID: "correct-user",
 		}, nil)
-	orderRepo.On("FindByID", mock.Anything,
-		titleToOrderID["break-the-order-create"]).
-		Return(&order.Order{}, serviceerrs.ErrNotFound)
-	orderRepo.On("FindByID", mock.Anything,
-		titleToOrderID["break-the-order-find"]).
-		Return(&order.Order{}, serviceerrs.ErrUnexpected)
-	orderRepo.On("Create", mock.Anything, mock.Anything).
-		Return(func(_ context.Context, o order.Order) error {
+	orderRepo.EXPECT().
+		FindByID(mock.Anything, titleToOrderID["break-the-order-create"]).
+		Return(order.Order{}, serviceerrs.ErrNotFound)
+	orderRepo.EXPECT().
+		FindByID(mock.Anything, titleToOrderID["break-the-order-find"]).
+		Return(order.Order{}, serviceerrs.ErrUnexpected)
+	orderRepo.EXPECT().
+		Create(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, o order.Order) error {
 			if o.ID == titleToOrderID["break-the-order-create"] {
 				return serviceerrs.ErrUnexpected
 			}
@@ -437,18 +440,24 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 		})
 
 	userRepo := mocks.NewMockUserRepository(t)
-	userRepo.On("FindByID", mock.Anything, "user").
-		Return(&user.User{}, nil)
-	userRepo.On("FindByID", mock.Anything, "correct-user").
-		Return(&user.User{}, nil)
-	userRepo.On("FindByID", mock.Anything, "wrong-user").
-		Return(&user.User{}, nil)
-	userRepo.On("FindByID", mock.Anything, "user-NOT-exist").
-		Return(&user.User{}, serviceerrs.ErrNotFound)
-	userRepo.On("FindByID", mock.Anything, "break-the-user-repo").
-		Return(&user.User{}, serviceerrs.ErrUnexpected)
-	userRepo.On("FindByID", mock.Anything, mock.Anything).
-		Return(&user.User{}, nil)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, "user").
+		Return(user.User{}, nil)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, "correct-user").
+		Return(user.User{}, nil)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, "wrong-user").
+		Return(user.User{}, nil)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, "user-NOT-exist").
+		Return(user.User{}, serviceerrs.ErrNotFound)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, "break-the-user-repo").
+		Return(user.User{}, serviceerrs.ErrUnexpected)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, mock.Anything).
+		Return(user.User{}, nil)
 
 	h := OrderHandler{
 		logger:    slog.Default(),
