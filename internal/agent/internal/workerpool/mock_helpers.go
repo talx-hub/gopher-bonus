@@ -25,7 +25,7 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 		GetOrderInfo(mock.Anything, mock.Anything).
 		RunAndReturn(func(_ context.Context, orderID string) (dto.AccrualInfo, error) {
 			if strings.HasPrefix(orderID, "2") {
-				accrual, err := strconv.Atoi(orderID)
+				accrual, err := strconv.ParseFloat(orderID, 64)
 				if err != nil {
 					return dto.AccrualInfo{},
 						fmt.Errorf("unexpected test error: %w", err)
