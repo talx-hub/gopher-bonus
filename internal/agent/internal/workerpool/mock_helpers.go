@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool/mocks"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
@@ -22,22 +23,22 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 	mockClient.
 		EXPECT().
 		GetOrderInfo(mock.Anything, mock.Anything).
-		RunAndReturn(func(_ context.Context, orderID string) (model.DTOAccrualInfo, error) {
+		RunAndReturn(func(_ context.Context, orderID string) (dto.AccrualInfo, error) {
 			if strings.HasPrefix(orderID, "2") {
 				accrual, err := strconv.Atoi(orderID)
 				if err != nil {
-					return model.DTOAccrualInfo{},
+					return dto.AccrualInfo{},
 						fmt.Errorf("unexpected test error: %w", err)
 				}
-				return model.DTOAccrualInfo{
+				return dto.AccrualInfo{
 					Order:   orderID,
-					Status:  string(model.StatusCalculatorProcessed),
+					Status:  string(dto.StatusCalculatorProcessed),
 					Accrual: accrual,
 				}, nil
 			}
 
 			if orderID == "429" {
-				return model.DTOAccrualInfo{},
+				return dto.AccrualInfo{},
 					&serviceerrs.TooManyRequestsError{
 						RetryAfter: model.DefaultTimeout,
 						RPM:        1,
@@ -49,20 +50,20 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 				time.Sleep(multiplier * model.DefaultTimeout)
 
 				const accrual = 428
-				return model.DTOAccrualInfo{
+				return dto.AccrualInfo{
 					Order:   orderID,
-					Status:  string(model.StatusCalculatorProcessed),
+					Status:  string(dto.StatusCalculatorProcessed),
 					Accrual: accrual,
 				}, nil
 			}
 
 			if strings.HasPrefix(orderID, "5") {
-				return model.DTOAccrualInfo{
+				return dto.AccrualInfo{
 					Order:  orderID,
-					Status: string(model.StatusCalculatorFailed),
+					Status: string(dto.StatusCalculatorFailed),
 				}, nil
 			}
-			return model.DTOAccrualInfo{}, nil
+			return dto.AccrualInfo{}, nil
 		})
 
 	return mockClient

@@ -8,13 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 )
 
 type AccrualClient interface {
-	GetOrderInfo(ctx context.Context, orderID string) (model.DTOAccrualInfo, error)
+	GetOrderInfo(ctx context.Context, orderID string) (dto.AccrualInfo, error)
 }
 
 type AccrualSemaphore interface {
@@ -30,7 +31,7 @@ type WorkerPool struct {
 	Jobs           <-chan uint64
 	RateDataCh     chan<- serviceerrs.TooManyRequestsError
 	RequestCounter chan<- struct{}
-	Results        chan<- model.DTOAccrualInfo
+	Results        chan<- dto.AccrualInfo
 	OnWorkerStart  func()
 }
 
@@ -41,7 +42,7 @@ func New(
 	jobs <-chan uint64,
 	rateDataCh chan<- serviceerrs.TooManyRequestsError,
 	requestCounter chan<- struct{},
-	results chan<- model.DTOAccrualInfo,
+	results chan<- dto.AccrualInfo,
 ) *WorkerPool {
 	return &WorkerPool{
 		Client:         client,
@@ -95,7 +96,7 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 					slog.LevelWarn,
 					err.Error(),
 				)
-				pool.Results <- pool.dummy(orderID, model.StatusAgentFailed)
+				pool.Results <- pool.dummy(orderID, dto.StatusAgentFailed)
 				continue
 			}
 			log.With("unit", "semaphore").
@@ -111,11 +112,11 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 
 			if err != nil {
 				if errors.Is(err, serviceerrs.ErrNoContent) {
-					pool.Results <- pool.dummy(orderID, model.StatusCalculatorNoContent)
+					pool.Results <- pool.dummy(orderID, dto.StatusCalculatorNoContent)
 					continue
 				}
 
-				pool.Results <- pool.dummy(orderID, model.StatusCalculatorFailed)
+				pool.Results <- pool.dummy(orderID, dto.StatusCalculatorFailed)
 				if ctx.Err() != nil {
 					return
 				}
@@ -134,8 +135,8 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 	}
 }
 
-func (pool *WorkerPool) dummy(orderID uint64, status model.AccrualStatus) model.DTOAccrualInfo {
-	return model.DTOAccrualInfo{
+func (pool *WorkerPool) dummy(orderID uint64, status dto.AccrualStatus) dto.AccrualInfo {
+	return dto.AccrualInfo{
 		Order:  strconv.FormatUint(orderID, 10),
 		Status: string(status),
 	}

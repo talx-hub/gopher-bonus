@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
@@ -123,13 +124,13 @@ func TestWorkerPool_Start_generalPipeline(t *testing.T) {
 	agentFails := 0
 	ok := 0
 	for _, r := range res {
-		if r.Status == string(model.StatusCalculatorFailed) {
+		if r.Status == string(dto.StatusCalculatorFailed) {
 			calcFails++
 		}
-		if r.Status == string(model.StatusAgentFailed) {
+		if r.Status == string(dto.StatusAgentFailed) {
 			agentFails++
 		}
-		if r.Status == string(model.StatusCalculatorProcessed) {
+		if r.Status == string(dto.StatusCalculatorProcessed) {
 			ok++
 		}
 	}
@@ -181,13 +182,13 @@ func TestWorkerPool_Start_tooManyRequests(t *testing.T) {
 	agentFails := 0
 	ok := 0
 	for _, r := range res {
-		if r.Status == string(model.StatusCalculatorFailed) {
+		if r.Status == string(dto.StatusCalculatorFailed) {
 			calcFails++
 		}
-		if r.Status == string(model.StatusAgentFailed) {
+		if r.Status == string(dto.StatusAgentFailed) {
 			agentFails++
 		}
-		if r.Status == string(model.StatusCalculatorProcessed) {
+		if r.Status == string(dto.StatusCalculatorProcessed) {
 			ok++
 		}
 	}
@@ -254,13 +255,13 @@ func TestWorkerPool_Start_semaTimeout(t *testing.T) {
 	agentFails := 0
 	ok := 0
 	for _, r := range res {
-		if r.Status == string(model.StatusCalculatorFailed) {
+		if r.Status == string(dto.StatusCalculatorFailed) {
 			calcFails++
 		}
-		if r.Status == string(model.StatusAgentFailed) {
+		if r.Status == string(dto.StatusAgentFailed) {
 			agentFails++
 		}
-		if r.Status == string(model.StatusCalculatorProcessed) {
+		if r.Status == string(dto.StatusCalculatorProcessed) {
 			ok++
 		}
 	}

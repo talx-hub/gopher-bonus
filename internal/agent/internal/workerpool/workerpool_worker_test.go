@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool/mocks"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
@@ -18,14 +19,14 @@ func TestWorkerPool_worker_general(t *testing.T) {
 	tests := []struct {
 		name         string
 		jobs         []uint64
-		results      []model.DTOAccrualInfo
+		results      []dto.AccrualInfo
 		requestCount int
 		rateData     []serviceerrs.TooManyRequestsError
 	}{
 		{
 			name: "happy case #1",
 			jobs: []uint64{201, 202, 203, 204, 205, 206},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "201", Status: "PROCESSED", Accrual: 201},
 				{Order: "202", Status: "PROCESSED", Accrual: 202},
 				{Order: "203", Status: "PROCESSED", Accrual: 203},
@@ -39,7 +40,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "happy case #3",
 			jobs: []uint64{200},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "200", Status: "PROCESSED", Accrual: 200},
 			},
 			requestCount: 1,
@@ -48,7 +49,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "random error #1",
 			jobs: []uint64{500, 200, 201},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "500", Status: "CALCULATOR_FAILED"},
 				{Order: "200", Status: "PROCESSED", Accrual: 200},
 				{Order: "201", Status: "PROCESSED", Accrual: 201},
@@ -59,7 +60,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "random error #2",
 			jobs: []uint64{500, 501, 502},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "500", Status: "CALCULATOR_FAILED"},
 				{Order: "501", Status: "CALCULATOR_FAILED"},
 				{Order: "502", Status: "CALCULATOR_FAILED"},
@@ -70,7 +71,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "random error #3",
 			jobs: []uint64{200, 500, 201, 501},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "200", Status: "PROCESSED", Accrual: 200},
 				{Order: "500", Status: "CALCULATOR_FAILED"},
 				{Order: "201", Status: "PROCESSED", Accrual: 201},
@@ -82,7 +83,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "too many requests #1",
 			jobs: []uint64{429},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "429", Status: "CALCULATOR_FAILED"},
 			},
 			requestCount: 1,
@@ -93,7 +94,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "too many requests #2",
 			jobs: []uint64{429, 200, 201, 202},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "429", Status: "CALCULATOR_FAILED"},
 			},
 			requestCount: 1,
@@ -104,7 +105,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "too many requests #3",
 			jobs: []uint64{201, 202, 429, 203, 204, 205},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "201", Status: "PROCESSED", Accrual: 201},
 				{Order: "202", Status: "PROCESSED", Accrual: 202},
 				{Order: "429", Status: "CALCULATOR_FAILED"},
@@ -117,7 +118,7 @@ func TestWorkerPool_worker_general(t *testing.T) {
 		{
 			name: "multiple too many requests",
 			jobs: []uint64{200, 429, 429, 429},
-			results: []model.DTOAccrualInfo{
+			results: []dto.AccrualInfo{
 				{Order: "200", Status: "PROCESSED", Accrual: 200},
 				{Order: "429", Status: "CALCULATOR_FAILED"},
 			},
@@ -171,7 +172,7 @@ func TestWorkerPool_worker_noJobs(t *testing.T) {
 		results, requests, errs := TestWorker(t,
 			ctx, cancel, rateDataCh, requestCountCh, resultCh, pool)
 
-		assert.Equal(t, []model.DTOAccrualInfo{}, results)
+		assert.Equal(t, []dto.AccrualInfo{}, results)
 		assert.Equal(t, 0, len(requests))
 		assert.Equal(t, []serviceerrs.TooManyRequestsError{}, errs)
 		mockClientNoExpectations.AssertNotCalled(t, "GetOrderInfo")
@@ -234,14 +235,14 @@ func TestWorkerPool_worker_semaphoreError(t *testing.T) {
 	results, requests, errs := TestWorker(t,
 		ctx, cancel, rateDataCh, requestCountCh, resultCh, pool)
 
-	wantResults := []model.DTOAccrualInfo{
-		{Order: "429", Status: string(model.StatusAgentFailed)},
-		{Order: "200", Status: string(model.StatusAgentFailed)},
-		{Order: "201", Status: string(model.StatusAgentFailed)},
-		{Order: "500", Status: string(model.StatusAgentFailed)},
-		{Order: "202", Status: string(model.StatusAgentFailed)},
-		{Order: "501", Status: string(model.StatusAgentFailed)},
-		{Order: "203", Status: string(model.StatusAgentFailed)},
+	wantResults := []dto.AccrualInfo{
+		{Order: "429", Status: string(dto.StatusAgentFailed)},
+		{Order: "200", Status: string(dto.StatusAgentFailed)},
+		{Order: "201", Status: string(dto.StatusAgentFailed)},
+		{Order: "500", Status: string(dto.StatusAgentFailed)},
+		{Order: "202", Status: string(dto.StatusAgentFailed)},
+		{Order: "501", Status: string(dto.StatusAgentFailed)},
+		{Order: "203", Status: string(dto.StatusAgentFailed)},
 	}
 
 	assert.Equal(t, wantResults, results)

@@ -8,12 +8,13 @@ import (
 	"sync"
 
 	"github.com/talx-hub/gopher-bonus/internal/agent"
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 )
 
 func main() {
 	inputCh := make(chan uint64)
-	outputCh := make(chan model.DTOAccrualInfo)
+	outputCh := make(chan dto.AccrualInfo)
 	a := agent.New(inputCh, outputCh, "127.0.0.1:8080")
 	var wg sync.WaitGroup
 	const nGoroutines = 3

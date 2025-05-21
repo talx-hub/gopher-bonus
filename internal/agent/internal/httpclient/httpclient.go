@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
@@ -31,7 +32,7 @@ func New(accrualAddress string) *HTTPClient {
 }
 
 func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
-) (model.DTOAccrualInfo, error) {
+) (dto.AccrualInfo, error) {
 	path := url.URL{
 		Scheme: "http",
 		Host:   c.accrualAddress,
@@ -43,12 +44,12 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 	request, err := http.NewRequestWithContext(
 		tCtx, http.MethodGet, path.String(), http.NoBody)
 	if err != nil {
-		return model.DTOAccrualInfo{},
+		return dto.AccrualInfo{},
 			fmt.Errorf("failed to create the request: %w", err)
 	}
 	resp, err := c.client.Do(request)
 	if err != nil {
-		return model.DTOAccrualInfo{},
+		return dto.AccrualInfo{},
 			fmt.Errorf("failed to send request to Accrual: %w", err)
 	}
 	body, err := io.ReadAll(resp.Body)
@@ -64,7 +65,7 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 		}
 	}()
 	if err != nil {
-		return model.DTOAccrualInfo{},
+		return dto.AccrualInfo{},
 			fmt.Errorf("failed to read the body: %w", err)
 	}
 
@@ -79,50 +80,50 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 }
 
 func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
-) (model.DTOAccrualInfo, error) {
+) (dto.AccrualInfo, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if ct := resp.Header.Get(model.HeaderContentType); ct != "application/json" {
-			return model.DTOAccrualInfo{},
+			return dto.AccrualInfo{},
 				fmt.Errorf("unexpected content type %s", ct)
 		}
-		data := model.DTOAccrualInfo{}
+		data := dto.AccrualInfo{}
 		if err := json.Unmarshal(body, &data); err != nil {
-			return model.DTOAccrualInfo{},
+			return dto.AccrualInfo{},
 				fmt.Errorf("request decoding error: %w", err)
 		}
 		return data, nil
 	case http.StatusNoContent:
-		return model.DTOAccrualInfo{}, serviceerrs.ErrNoContent
+		return dto.AccrualInfo{}, serviceerrs.ErrNoContent
 	case http.StatusTooManyRequests:
 		retryAfter := resp.Header.Get("Retry-After")
 		if retryAfter == "" {
-			return model.DTOAccrualInfo{},
+			return dto.AccrualInfo{},
 				errors.New("empty retry-after value")
 		}
 		ra, err := strconv.Atoi(retryAfter)
 		if err != nil {
-			return model.DTOAccrualInfo{},
+			return dto.AccrualInfo{},
 				fmt.Errorf("retry after atoi failed: %w", err)
 		}
 
 		rpm, err := c.parseBody(body)
 		if err != nil {
-			return model.DTOAccrualInfo{},
+			return dto.AccrualInfo{},
 				fmt.Errorf("failed to parse the body: %w", err)
 		}
 
-		return model.DTOAccrualInfo{},
+		return dto.AccrualInfo{},
 			&serviceerrs.TooManyRequestsError{
 				RetryAfter: time.Duration(ra) * time.Second,
 				RPM:        rpm,
 			}
 	case http.StatusInternalServerError:
-		return model.DTOAccrualInfo{},
+		return dto.AccrualInfo{},
 			fmt.Errorf("accrual service error\nBody: %s", string(body))
 	}
 
-	return model.DTOAccrualInfo{},
+	return dto.AccrualInfo{},
 		fmt.Errorf("unexpected status: %d\nBody: %s",
 			resp.StatusCode, string(body))
 }

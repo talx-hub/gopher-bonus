@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
@@ -15,10 +15,10 @@ func TestPool(t *testing.T,
 	poolWG *sync.WaitGroup,
 	rateDataCh chan serviceerrs.TooManyRequestsError,
 	requestCountCh chan struct{},
-	resultCh chan model.DTOAccrualInfo,
+	resultCh chan dto.AccrualInfo,
 	pool *WorkerPool,
 	workerCount int,
-) ([]model.DTOAccrualInfo, []struct{}, []serviceerrs.TooManyRequestsError) {
+) ([]dto.AccrualInfo, []struct{}, []serviceerrs.TooManyRequestsError) {
 	t.Helper()
 
 	helperCtx, helperCancel := context.WithCancel(context.Background())
@@ -41,7 +41,7 @@ func TestPool(t *testing.T,
 	}()
 
 	helperWG.Add(1)
-	var results []model.DTOAccrualInfo
+	var results []dto.AccrualInfo
 	go func() {
 		defer helperWG.Done()
 		results = ListenChannel(t, helperCtx, resultCh)
@@ -67,9 +67,9 @@ func TestWorker(t *testing.T,
 	cancel context.CancelFunc,
 	rateDataCh chan serviceerrs.TooManyRequestsError,
 	requestCountCh chan struct{},
-	resultCh chan model.DTOAccrualInfo,
+	resultCh chan dto.AccrualInfo,
 	pool *WorkerPool,
-) ([]model.DTOAccrualInfo, []struct{}, []serviceerrs.TooManyRequestsError) {
+) ([]dto.AccrualInfo, []struct{}, []serviceerrs.TooManyRequestsError) {
 	t.Helper()
 
 	helperCtx, helperCancel := context.WithCancel(context.Background())
@@ -77,7 +77,7 @@ func TestWorker(t *testing.T,
 	helperWg := &sync.WaitGroup{}
 
 	helperWg.Add(1)
-	var results []model.DTOAccrualInfo
+	var results []dto.AccrualInfo
 	go func() {
 		defer helperWg.Done()
 		results = ListenChannel(t, helperCtx, resultCh)
@@ -117,12 +117,12 @@ func SetupWorkerPool(t *testing.T,
 	client AccrualClient,
 	sema AccrualSemaphore,
 	jobGenerator func() chan uint64,
-) (*WorkerPool, chan serviceerrs.TooManyRequestsError, chan struct{}, chan model.DTOAccrualInfo) {
+) (*WorkerPool, chan serviceerrs.TooManyRequestsError, chan struct{}, chan dto.AccrualInfo) {
 	t.Helper()
 
 	rateDataCh := make(chan serviceerrs.TooManyRequestsError)
 	requestCountCh := make(chan struct{})
-	resultCh := make(chan model.DTOAccrualInfo)
+	resultCh := make(chan dto.AccrualInfo)
 
 	pool := New(
 		client,

@@ -1,4 +1,4 @@
-package model
+package dto
 
 type AccrualStatus string
 
@@ -12,7 +12,7 @@ const (
 	StatusAgentFailed          AccrualStatus = "AGENT_FAILED"
 )
 
-type DTOAccrualInfo struct {
+type AccrualInfo struct {
 	Order   string `json:"order"`
 	Status  string `json:"status"`
 	Accrual int    `json:"accrual,omitempty"`

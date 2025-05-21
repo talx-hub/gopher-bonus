@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/httpclient"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/requestwatcher"
 	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool"
@@ -18,14 +19,14 @@ import (
 
 type Agent struct {
 	ordersCh       chan uint64
-	responsesCh    chan<- model.DTOAccrualInfo
+	responsesCh    chan<- dto.AccrualInfo
 	accrualAddress string
 	workerCount    int
 }
 
 func New(
 	ordersCh chan uint64,
-	responsesCh chan<- model.DTOAccrualInfo,
+	responsesCh chan<- dto.AccrualInfo,
 	accrualAddress string,
 ) *Agent {
 	return &Agent{

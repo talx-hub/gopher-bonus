@@ -8,7 +8,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 )
 
 // NewMockAccrualClient creates a new instance of MockAccrualClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -39,22 +39,22 @@ func (_m *MockAccrualClient) EXPECT() *MockAccrualClient_Expecter {
 }
 
 // GetOrderInfo provides a mock function for the type MockAccrualClient
-func (_mock *MockAccrualClient) GetOrderInfo(ctx context.Context, orderID string) (model.DTOAccrualInfo, error) {
+func (_mock *MockAccrualClient) GetOrderInfo(ctx context.Context, orderID string) (dto.AccrualInfo, error) {
 	ret := _mock.Called(ctx, orderID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrderInfo")
 	}
 
-	var r0 model.DTOAccrualInfo
+	var r0 dto.AccrualInfo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (model.DTOAccrualInfo, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (dto.AccrualInfo, error)); ok {
 		return returnFunc(ctx, orderID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) model.DTOAccrualInfo); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) dto.AccrualInfo); ok {
 		r0 = returnFunc(ctx, orderID)
 	} else {
-		r0 = ret.Get(0).(model.DTOAccrualInfo)
+		r0 = ret.Get(0).(dto.AccrualInfo)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = returnFunc(ctx, orderID)
@@ -83,12 +83,12 @@ func (_c *MockAccrualClient_GetOrderInfo_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockAccrualClient_GetOrderInfo_Call) Return(dTOAccrualInfo model.DTOAccrualInfo, err error) *MockAccrualClient_GetOrderInfo_Call {
-	_c.Call.Return(dTOAccrualInfo, err)
+func (_c *MockAccrualClient_GetOrderInfo_Call) Return(accrualInfo dto.AccrualInfo, err error) *MockAccrualClient_GetOrderInfo_Call {
+	_c.Call.Return(accrualInfo, err)
 	return _c
 }
 
-func (_c *MockAccrualClient_GetOrderInfo_Call) RunAndReturn(run func(ctx context.Context, orderID string) (model.DTOAccrualInfo, error)) *MockAccrualClient_GetOrderInfo_Call {
+func (_c *MockAccrualClient_GetOrderInfo_Call) RunAndReturn(run func(ctx context.Context, orderID string) (dto.AccrualInfo, error)) *MockAccrualClient_GetOrderInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

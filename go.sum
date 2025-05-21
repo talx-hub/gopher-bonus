@@ -1,9 +1,5 @@
 github.com/caarlos0/env/v6 v6.10.1 h1:t1mPSxNpei6M5yAeu1qtRdPAK29Nbcf/n3G7x+b3/II=
 github.com/caarlos0/env/v6 v6.10.1/go.mod h1:hvp/ryKXKipEkcuYjs9mI4bBCg+UI0Yhgm5Zu0ddvwc=
-github.com/caitlin615/nist-password-validator v0.0.0-20190321104149-45ab5d3140de h1:bk4CVEW/BVE1lk586XymNY6RVSKu05LsoEFWY48n4Ao=
-github.com/caitlin615/nist-password-validator v0.0.0-20190321104149-45ab5d3140de/go.mod h1:Svsrx5xuPYopA1HrwqxaDdo5hTNoLHmrYmnb0UKxEdw=
-github.com/caitlinelfring/nist-password-validator v0.0.0-20190321104149-45ab5d3140de h1:yRQhnvxJM2IsCN3rb4i/ctz5vMbQRwg/AAxIsX5G0RQ=
-github.com/caitlinelfring/nist-password-validator v0.0.0-20190321104149-45ab5d3140de/go.mod h1:oWraEqrO4w5n/8vFePNzb1eTWm89VgKinNalfd5Td5I=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-chi/chi/v5 v5.2.1 h1:KOIHODQj58PmL80G2Eak4WdvUzjSJSm0vG72crDCqb8=
