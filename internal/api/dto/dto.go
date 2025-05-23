@@ -2,6 +2,7 @@ package dto
 
 import (
 	"errors"
+	"time"
 
 	passwordvalidator "github.com/wagslane/go-password-validator"
 )
@@ -30,4 +31,10 @@ type BalanceResponse struct {
 type WithdrawRequest struct {
 	OrderID string  `json:"order"`
 	Sum     float64 `json:"sum"`
+}
+
+type WithdrawalResponse struct {
+	ProcessedAt time.Time `json:"processed_at"`
+	OrderID     string    `json:"order"`
+	Sum         float64   `json:"sum"`
 }

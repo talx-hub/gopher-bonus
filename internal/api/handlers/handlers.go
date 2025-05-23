@@ -455,7 +455,55 @@ func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TransactionHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
+	userID, err := h.retrieveUserID(r.Context(), h.userRepo)
+	if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			errRetrieveUserID,
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(),
+			http.StatusInternalServerError)
+		return
+	}
 
+	withdrawals, err := h.bonusRepo.ListTransactionsByUser(
+		r.Context(), userID, bonus.TypeWithdrawal)
+	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to find userID and it's withdrawals",
+			slog.String("user_id", userID),
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		return
+	} else if err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"unexpected bonus Repo error",
+			slog.String("user_id", userID),
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(withdrawals) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err = json.NewEncoder(w).Encode(withdrawals); err != nil {
+		h.logger.LogAttrs(r.Context(),
+			slog.LevelError,
+			"failed to write response",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set(model.HeaderContentType, "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *GeneralHandler) Ping(w http.ResponseWriter, r *http.Request) {}
