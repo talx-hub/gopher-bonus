@@ -5,6 +5,8 @@ import (
 	"time"
 
 	passwordvalidator "github.com/wagslane/go-password-validator"
+
+	"github.com/talx-hub/gopher-bonus/internal/model/order"
 )
 
 type UserRequest struct {
@@ -21,6 +23,13 @@ func (r *UserRequest) IsValid() error {
 	const minEntropyBits = 50
 	invalidPasswordErr := passwordvalidator.Validate(r.Password, minEntropyBits)
 	return errors.Join(invalidLoginErr, invalidPasswordErr)
+}
+
+type OrderResponse struct {
+	UploadedAt time.Time    `json:"uploaded_at"`
+	Status     order.Status `json:"status"`
+	OrderID    string       `json:"number"`
+	Accrual    float64      `json:"accrual,omitempty"`
 }
 
 type BalanceResponse struct {
