@@ -2,9 +2,15 @@ package dbmanager
 
 import (
 	"context"
+	"embed"
+	"errors"
 	"log/slog"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
 )
@@ -66,8 +72,48 @@ func (m *DBManager) Connect(ctx context.Context) *DBManager {
 	return m
 }
 
-func (m *DBManager) ApplyMigrations() error {
-	return nil
+//go:embed migrations/*.sql
+var migrationsDir embed.FS
+
+func (m *DBManager) ApplyMigrations(ctx context.Context) *DBManager {
+	d, err := iofs.New(migrationsDir, "migrations")
+	if err != nil {
+		m.log.LogAttrs(ctx,
+			slog.LevelError,
+			"failed to return an iofs driver",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		m.IsConnected = false
+		return m
+	}
+
+	migrations, err := migrate.NewWithSourceInstance("iofs", d, m.dsn)
+	if err != nil {
+		m.log.LogAttrs(ctx,
+			slog.LevelError,
+			"failed to get a new migrate instance",
+			slog.Any(model.KeyLoggerError, err),
+		)
+		m.IsConnected = false
+		return m
+	}
+	if err := migrations.Up(); err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			m.log.LogAttrs(ctx,
+				slog.LevelError,
+				"failed to apply migrations to the DB",
+				slog.Any(model.KeyLoggerError, err),
+			)
+			m.IsConnected = false
+			return m
+		}
+	}
+
+	m.log.LogAttrs(ctx,
+		slog.LevelInfo,
+		"migrations applied successfully",
+	)
+	return m
 }
 
 func (m *DBManager) Ping(ctx context.Context) *DBManager {
