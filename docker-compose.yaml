@@ -1,0 +1,29 @@
+services:
+  database:
+    container_name: gophermart-database
+    image: ${POSTGRES_IMAGE}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gophermart -d gophermart"]
+      interval: 5s
+      retries: 3
+      timeout: 5s
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: "P@ssw0rd"
+      POSTGRES_DATA: "/var/lib/postgresql/data"
+    volumes:
+      - "./db/init:/docker-entrypoint-initdb.d"
+      - "gophermart-volume:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
+    networks:
+      - gophermart-network
+    restart: always
+
+volumes:
+  gophermart-volume:
+
+networks:
+  gophermart-network:
+    driver: bridge
