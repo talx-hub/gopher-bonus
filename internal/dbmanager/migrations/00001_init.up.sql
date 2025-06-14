@@ -1,12 +1,12 @@
 BEGIN TRANSACTION;
 
-    CREATE TABLE users(
+    CREATE TABLE user_hashes(
         id_user INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        login_user VARCHAR(30) NOT NULL);
+        hash_login VARCHAR(200) NOT NULL);
 
     CREATE TABLE password_hashes(
         id_password INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        id_user INT REFERENCES users(id_user) NOT NULL,
+        id_user INT REFERENCES user_hashes(id_user) NOT NULL,
         hash_password VARCHAR(200) NOT NULL);
 
     CREATE TABLE statuses(
@@ -15,14 +15,14 @@ BEGIN TRANSACTION;
 
     CREATE TABLE accrued_orders(
         id_acc_order INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        id_user INT REFERENCES users(id_user) NOT NULL,
+        id_user INT REFERENCES user_hashes(id_user) NOT NULL,
         order_no VARCHAR(24) NOT NULL,
         uploaded_at timestamp with time zone NOT NULL,
         id_status INT REFERENCES statuses(id_status) NOT NULL);
 
     CREATE TABLE withdrawn_orders(
         id_withdrawn_order INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        id_user INT REFERENCES users(id_user) NOT NULL,
+        id_user INT REFERENCES user_hashes(id_user) NOT NULL,
         order_no VARCHAR(24) NOT NULL,
         processed_at timestamp with time zone NOT NULL);
 
@@ -36,7 +36,7 @@ BEGIN TRANSACTION;
         id_withdrawn_order INT REFERENCES withdrawn_orders(id_withdrawn_order),
         amount DECIMAL(12, 2) NOT NULL);
 
-ALTER TABLE users ADD CONSTRAINT unique_login UNIQUE("login_user");
+ALTER TABLE user_hashes ADD CONSTRAINT unique_login UNIQUE("hash_login");
 ALTER TABLE password_hashes ADD CONSTRAINT unique_hash UNIQUE("hash_password");
 ALTER TABLE password_hashes ADD CONSTRAINT unique_user_id UNIQUE("id_user");
 ALTER TABLE statuses ADD CONSTRAINT unique_name_status UNIQUE ("name_status");

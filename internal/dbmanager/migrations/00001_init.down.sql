@@ -1,6 +1,6 @@
 BEGIN TRANSACTION;
 
-    DROP TABLE users;
+    DROP TABLE user_hashes;
     DROP TABLE password_hashes;
     DROP TABLE statuses;
     DROP TABLE accrued_orders;

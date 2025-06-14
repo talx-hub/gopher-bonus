@@ -15,23 +15,49 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/model"
 )
 
-type DBManager struct {
-	log         *slog.Logger
-	Pool        *pgxpool.Pool
-	dsn         string
-	IsConnected bool
-}
-
 func New(dsn string, log *slog.Logger) *DBManager {
 	return &DBManager{
-		log:         log,
-		Pool:        nil,
-		IsConnected: false,
-		dsn:         dsn,
+		log:  log,
+		pool: nil,
+		dsn:  dsn,
 	}
 }
 
+type pool interface {
+	Ping(context.Context) error
+	Close()
+}
+
+type DBManager struct {
+	log  *slog.Logger
+	pool pool
+	err  error
+	dsn  string
+}
+
+func (m *DBManager) Error() error {
+	return m.err
+}
+
+func (m *DBManager) GetPool(ctx context.Context) (*pgxpool.Pool, error) {
+	p, ok := m.pool.(*pgxpool.Pool)
+	if !ok {
+		const errStr = "failed to convert pool to *pgxpool.Pool"
+		m.log.LogAttrs(ctx,
+			slog.LevelError,
+			errStr,
+		)
+		return nil, errors.New(errStr)
+	}
+
+	return p, nil
+}
+
 func (m *DBManager) Connect(ctx context.Context) *DBManager {
+	if m.err != nil {
+		return m
+	}
+
 	cfg, err := pgxpool.ParseConfig(m.dsn)
 	if err != nil {
 		m.log.LogAttrs(ctx,
@@ -40,6 +66,7 @@ func (m *DBManager) Connect(ctx context.Context) *DBManager {
 			slog.Any(model.KeyLoggerError, err),
 		)
 
+		m.err = err
 		return m
 	}
 	cfg.MinConns = 1
@@ -54,21 +81,11 @@ func (m *DBManager) Connect(ctx context.Context) *DBManager {
 			slog.Any(model.KeyLoggerError, err),
 		)
 
-		return m
-	}
-	if err = pool.Ping(ctx); err != nil {
-		m.log.LogAttrs(ctx,
-			slog.LevelError,
-			"failed to ping the DB",
-			slog.Any(model.KeyLoggerError, err),
-		)
-
-		m.Pool = pool
+		m.err = err
 		return m
 	}
 
-	m.IsConnected = true
-	m.Pool = pool
+	m.pool = pool
 	return m
 }
 
@@ -76,6 +93,10 @@ func (m *DBManager) Connect(ctx context.Context) *DBManager {
 var migrationsDir embed.FS
 
 func (m *DBManager) ApplyMigrations(ctx context.Context) *DBManager {
+	if m.err != nil {
+		return m
+	}
+
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
 		m.log.LogAttrs(ctx,
@@ -83,7 +104,8 @@ func (m *DBManager) ApplyMigrations(ctx context.Context) *DBManager {
 			"failed to return an iofs driver",
 			slog.Any(model.KeyLoggerError, err),
 		)
-		m.IsConnected = false
+
+		m.err = err
 		return m
 	}
 
@@ -94,19 +116,28 @@ func (m *DBManager) ApplyMigrations(ctx context.Context) *DBManager {
 			"failed to get a new migrate instance",
 			slog.Any(model.KeyLoggerError, err),
 		)
-		m.IsConnected = false
+
+		m.err = err
 		return m
 	}
-	if err := migrations.Up(); err != nil {
-		if !errors.Is(err, migrate.ErrNoChange) {
-			m.log.LogAttrs(ctx,
-				slog.LevelError,
-				"failed to apply migrations to the DB",
-				slog.Any(model.KeyLoggerError, err),
-			)
-			m.IsConnected = false
-			return m
-		}
+
+	err = migrations.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		m.log.LogAttrs(ctx,
+			slog.LevelError,
+			"failed to apply migrations to the DB",
+			slog.Any(model.KeyLoggerError, err),
+		)
+
+		m.err = err
+		return m
+	}
+	if errors.Is(err, migrate.ErrNoChange) {
+		m.log.LogAttrs(ctx,
+			slog.LevelInfo,
+			"no migrations to apply",
+		)
+		return m
 	}
 
 	m.log.LogAttrs(ctx,
@@ -117,26 +148,29 @@ func (m *DBManager) ApplyMigrations(ctx context.Context) *DBManager {
 }
 
 func (m *DBManager) Ping(ctx context.Context) *DBManager {
-	if err := m.Pool.Ping(ctx); err != nil {
+	if m.err != nil {
+		return m
+	}
+
+	if err := m.pool.Ping(ctx); err != nil {
 		m.log.LogAttrs(ctx,
 			slog.LevelError,
 			"failed to ping the DB",
 			slog.Any(model.KeyLoggerError, err),
 		)
-		m.IsConnected = false
-		return m
+
+		m.err = err
 	}
 
-	m.IsConnected = true
 	return m
 }
 
 func (m *DBManager) Close() {
-	if m.Pool == nil {
+	if m.pool == nil {
 		return
 	}
 
-	m.Pool.Close()
+	m.pool.Close()
 	m.log.LogAttrs(context.TODO(),
 		slog.LevelInfo,
 		"connection to DB closed",
