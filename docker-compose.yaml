@@ -9,8 +9,8 @@ services:
       timeout: 5s
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: "P@ssw0rd"
+      POSTGRES_PASSWORD: "P@ssw0rd"
+      POSTGRES_DB: postgres
       POSTGRES_DATA: "/var/lib/postgresql/data"
     volumes:
       - "./db/init:/docker-entrypoint-initdb.d"
