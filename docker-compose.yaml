@@ -1,7 +1,7 @@
 services:
   database:
     container_name: gophermart-database
-    image: ${POSTGRES_IMAGE}
+    image: postgres:${POSTGRES_TAG}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gophermart -d gophermart"]
       interval: 5s

@@ -158,10 +158,13 @@ func (m *DBManager) Ping(ctx context.Context) *DBManager {
 			"failed to ping the DB",
 			slog.Any(model.KeyLoggerError, err),
 		)
-
 		m.err = err
 	}
 
+	m.log.LogAttrs(ctx,
+		slog.LevelInfo,
+		"successfully ping the DB",
+	)
 	return m
 }
 
