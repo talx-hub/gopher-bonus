@@ -23,7 +23,9 @@ services:
 
 volumes:
   gophermart-volume:
+    name: gophermart-volume
 
 networks:
   gophermart-network:
     driver: bridge
+    name: gophermart-network

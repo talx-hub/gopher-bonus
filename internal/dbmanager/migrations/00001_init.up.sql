@@ -24,7 +24,8 @@ BEGIN TRANSACTION;
         id_withdrawn_order INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
         id_user INT REFERENCES user_hashes(id_user) NOT NULL,
         order_no VARCHAR(24) NOT NULL,
-        processed_at timestamp with time zone NOT NULL);
+        processed_at timestamp with time zone NOT NULL,
+        id_status INT REFERENCES statuses(id_status) NOT NULL);
 
     CREATE TABLE accruals(
         id_acc INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

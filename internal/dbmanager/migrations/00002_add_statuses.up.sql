@@ -5,6 +5,7 @@ BEGIN TRANSACTION;
           ('NEW'),
           ('INVALID'),
           ('PROCESSING'),
-          ('PROCESSED');
+          ('PROCESSED'),
+          ('REJECTED');
 
 COMMIT;

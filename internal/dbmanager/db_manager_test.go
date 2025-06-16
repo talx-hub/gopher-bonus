@@ -69,7 +69,7 @@ func initGetSUConnection(hostPort string) {
 }
 
 func loadImageFromEnv() string {
-	if err := godotenv.Load("ini.env"); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		log.Fatalf("error loading .env file: %v", err)
 	}
 	return os.Getenv("POSTGRES_TAG")
