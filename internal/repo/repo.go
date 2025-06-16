@@ -83,7 +83,7 @@ func (r *UserRepository) Exists(ctx context.Context, loginHash string) bool {
 func (r *UserRepository) FindByLogin(ctx context.Context, loginHash string,
 ) (user.User, error) {
 	queries := db.New(r.pool)
-	u, err := queries.FindByLogin(ctx, loginHash)
+	u, err := queries.FindUserByLogin(ctx, loginHash)
 	if err != nil {
 		return user.User{},
 			fmt.Errorf("failed to find user by login in DB: %w", err)
@@ -105,7 +105,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string,
 			fmt.Errorf("failed to convert user ID to int32: %w", err)
 	}
 
-	u, err := queries.FindByID(ctx, int32(idParsed))
+	u, err := queries.FindUserByID(ctx, int32(idParsed))
 	if err != nil {
 		return user.User{},
 			fmt.Errorf("failed to find user by ID in DB: %w", err)

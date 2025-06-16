@@ -12,12 +12,12 @@ SELECT EXISTS(SELECT 1
               FROM user_hashes
               WHERE hash_login = $1);
 
--- name: FindByLogin :one
+-- name: FindUserByLogin :one
 SELECT user_hashes.id_user, user_hashes.hash_login, ph.hash_password
 FROM user_hashes JOIN password_hashes ph on user_hashes.id_user = ph.id_user
 WHERE hash_login = $1;
 
--- name: FindByID :one
+-- name: FindUserByID :one
 SELECT user_hashes.id_user, user_hashes.hash_login, ph.hash_password
 FROM user_hashes JOIN password_hashes ph on user_hashes.id_user = ph.id_user
 WHERE user_hashes.id_user = $1;

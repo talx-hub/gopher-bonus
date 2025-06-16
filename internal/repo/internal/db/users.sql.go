@@ -22,40 +22,40 @@ func (q *Queries) Exists(ctx context.Context, hashLogin string) (bool, error) {
 	return exists, err
 }
 
-const findByID = `-- name: FindByID :one
+const findUserByID = `-- name: FindUserByID :one
 SELECT user_hashes.id_user, user_hashes.hash_login, ph.hash_password
 FROM user_hashes JOIN password_hashes ph on user_hashes.id_user = ph.id_user
 WHERE user_hashes.id_user = $1
 `
 
-type FindByIDRow struct {
+type FindUserByIDRow struct {
 	IDUser       int32
 	HashLogin    string
 	HashPassword string
 }
 
-func (q *Queries) FindByID(ctx context.Context, idUser int32) (FindByIDRow, error) {
-	row := q.db.QueryRow(ctx, findByID, idUser)
-	var i FindByIDRow
+func (q *Queries) FindUserByID(ctx context.Context, idUser int32) (FindUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, findUserByID, idUser)
+	var i FindUserByIDRow
 	err := row.Scan(&i.IDUser, &i.HashLogin, &i.HashPassword)
 	return i, err
 }
 
-const findByLogin = `-- name: FindByLogin :one
+const findUserByLogin = `-- name: FindUserByLogin :one
 SELECT user_hashes.id_user, user_hashes.hash_login, ph.hash_password
 FROM user_hashes JOIN password_hashes ph on user_hashes.id_user = ph.id_user
 WHERE hash_login = $1
 `
 
-type FindByLoginRow struct {
+type FindUserByLoginRow struct {
 	IDUser       int32
 	HashLogin    string
 	HashPassword string
 }
 
-func (q *Queries) FindByLogin(ctx context.Context, hashLogin string) (FindByLoginRow, error) {
-	row := q.db.QueryRow(ctx, findByLogin, hashLogin)
-	var i FindByLoginRow
+func (q *Queries) FindUserByLogin(ctx context.Context, hashLogin string) (FindUserByLoginRow, error) {
+	row := q.db.QueryRow(ctx, findUserByLogin, hashLogin)
+	var i FindUserByLoginRow
 	err := row.Scan(&i.IDUser, &i.HashLogin, &i.HashPassword)
 	return i, err
 }
