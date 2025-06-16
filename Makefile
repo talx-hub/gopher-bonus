@@ -43,3 +43,7 @@ migrate:
 			-path=/migrations \
 			-database postgres://gophermart:gophermart@gophermart-database:5432/gophermart?sslmode=disable \
 			up
+
+generate:
+	envsubst < sqlc.yaml.tmpl > sqlc.yaml
+	sqlc generate
