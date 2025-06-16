@@ -41,9 +41,9 @@ type AuthHandler struct {
 }
 
 type OrderRepository interface {
-	Create(ctx context.Context, o order.Order) error
+	Create(ctx context.Context, o *order.Order) error
 	FindByID(ctx context.Context, id string) (order.Order, error)
-	FindByUserID(ctx context.Context, userID string) ([]order.Order, error)
+	ListByUserID(ctx context.Context, userID string) ([]order.Order, error)
 }
 
 type userRetriever struct{}
@@ -262,7 +262,7 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 
 	o, err := h.orderRepo.FindByID(r.Context(), orderID)
 	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
-		err = h.orderRepo.Create(r.Context(), order.Order{
+		err = h.orderRepo.Create(r.Context(), &order.Order{
 			UploadedAt: time.Now(),
 			Status:     order.StatusNew,
 			ID:         orderID,
@@ -310,7 +310,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := h.orderRepo.FindByUserID(r.Context(), userID)
+	orders, err := h.orderRepo.ListByUserID(r.Context(), userID)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,

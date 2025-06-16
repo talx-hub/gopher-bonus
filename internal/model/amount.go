@@ -3,7 +3,12 @@ package model
 import (
 	"errors"
 	"math"
+	"math/big"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const kopInRub = 100
 
 type Amount struct {
 	roubles int64
@@ -11,7 +16,7 @@ type Amount struct {
 }
 
 func (a *Amount) ToFloat64() float64 {
-	return float64(a.roubles) + float64(a.kopeck)/100
+	return float64(a.roubles) + float64(a.kopeck)/kopInRub
 }
 
 func FromFloat(amount float64) (Amount, error) {
@@ -24,10 +29,32 @@ func FromFloat(amount float64) (Amount, error) {
 		return Amount{}, errors.New("amount overflow")
 	}
 
-	var a Amount
 	totalKop := int64(math.Round(amount * kopInRub))
-	a.roubles = totalKop / kopInRub
-	a.kopeck = totalKop % kopInRub
+	return Amount{
+		roubles: totalKop / kopInRub,
+		kopeck:  totalKop % kopInRub,
+	}, nil
+}
 
-	return a, nil
+func (a *Amount) ToPGNumeric() pgtype.Numeric {
+	return pgtype.Numeric{
+		Int:              big.NewInt(a.roubles*kopInRub + a.kopeck),
+		Exp:              kopInRub,
+		NaN:              false,
+		InfinityModifier: 0,
+		Valid:            false,
+	}
+}
+
+func FromPGNumeric(n pgtype.Numeric) (Amount, error) {
+	if !n.Valid || n.NaN {
+		return Amount{},
+			errors.New("invalid numeric value")
+	}
+
+	totalKop := n.Int.Int64()
+	return Amount{
+		roubles: totalKop / kopInRub,
+		kopeck:  totalKop % kopInRub,
+	}, nil
 }

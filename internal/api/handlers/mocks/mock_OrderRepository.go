@@ -39,7 +39,7 @@ func (_m *MockOrderRepository) EXPECT() *MockOrderRepository_Expecter {
 }
 
 // Create provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) Create(ctx context.Context, o order.Order) error {
+func (_mock *MockOrderRepository) Create(ctx context.Context, o *order.Order) error {
 	ret := _mock.Called(ctx, o)
 
 	if len(ret) == 0 {
@@ -47,7 +47,7 @@ func (_mock *MockOrderRepository) Create(ctx context.Context, o order.Order) err
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, order.Order) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *order.Order) error); ok {
 		r0 = returnFunc(ctx, o)
 	} else {
 		r0 = ret.Error(0)
@@ -67,9 +67,9 @@ func (_e *MockOrderRepository_Expecter) Create(ctx interface{}, o interface{}) *
 	return &MockOrderRepository_Create_Call{Call: _e.mock.On("Create", ctx, o)}
 }
 
-func (_c *MockOrderRepository_Create_Call) Run(run func(ctx context.Context, o order.Order)) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_Create_Call) Run(run func(ctx context.Context, o *order.Order)) *MockOrderRepository_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(order.Order))
+		run(args[0].(context.Context), args[1].(*order.Order))
 	})
 	return _c
 }
@@ -79,7 +79,7 @@ func (_c *MockOrderRepository_Create_Call) Return(err error) *MockOrderRepositor
 	return _c
 }
 
-func (_c *MockOrderRepository_Create_Call) RunAndReturn(run func(ctx context.Context, o order.Order) error) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_Create_Call) RunAndReturn(run func(ctx context.Context, o *order.Order) error) *MockOrderRepository_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -140,7 +140,7 @@ func (_c *MockOrderRepository_FindByID_Call) RunAndReturn(run func(ctx context.C
 }
 
 // FindByUserID provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) FindByUserID(ctx context.Context, userID string) ([]order.Order, error) {
+func (_mock *MockOrderRepository) ListByUserID(ctx context.Context, userID string) ([]order.Order, error) {
 	ret := _mock.Called(ctx, userID)
 
 	if len(ret) == 0 {

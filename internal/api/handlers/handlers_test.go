@@ -432,7 +432,7 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 		Return(order.Order{}, serviceerrs.ErrUnexpected)
 	orderRepo.EXPECT().
 		Create(mock.Anything, mock.Anything).
-		RunAndReturn(func(_ context.Context, o order.Order) error {
+		RunAndReturn(func(_ context.Context, o *order.Order) error {
 			if o.ID == titleToOrderID["break-the-order-create"] {
 				return serviceerrs.ErrUnexpected
 			}
