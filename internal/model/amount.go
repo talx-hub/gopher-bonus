@@ -15,6 +15,13 @@ type Amount struct {
 	kopeck  int64
 }
 
+func NewAmount(roubles, kopeck int64) Amount {
+	return Amount{
+		roubles: roubles,
+		kopeck:  kopeck,
+	}
+}
+
 func (a *Amount) ToFloat64() float64 {
 	return float64(a.roubles) + float64(a.kopeck)/kopInRub
 }
@@ -38,11 +45,9 @@ func FromFloat(amount float64) (Amount, error) {
 
 func (a *Amount) ToPGNumeric() pgtype.Numeric {
 	return pgtype.Numeric{
-		Int:              big.NewInt(a.roubles*kopInRub + a.kopeck),
-		Exp:              kopInRub,
-		NaN:              false,
-		InfinityModifier: 0,
-		Valid:            false,
+		Int:   big.NewInt(a.roubles*kopInRub + a.kopeck),
+		Exp:   -2,
+		Valid: true,
 	}
 }
 

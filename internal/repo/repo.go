@@ -229,6 +229,24 @@ func (r *OrderRepository) UpdateOrder(ctx context.Context, o *order.Order) error
 	}()
 
 	queries := db.New(tx)
+	res, err := queries.UpdateStatus(
+		ctx,
+		db.UpdateStatusParams{
+			NameStatus: string(o.Status),
+			OrderNo:    o.ID,
+		},
+	)
+	if err != nil || res.RowsAffected() == 0 {
+		return fmt.Errorf("failed to update status->(%s) for order %s: %w",
+			string(o.Status), o.ID, err)
+	}
+	if o.Status != order.StatusProcessed {
+		if err = tx.Commit(ctx); err != nil {
+			return fmt.Errorf("failed to commit TX: %w", err)
+		}
+		return nil
+	}
+
 	if err = queries.AddAccruedAmount(
 		ctx,
 		db.AddAccruedAmountParams{
@@ -237,17 +255,6 @@ func (r *OrderRepository) UpdateOrder(ctx context.Context, o *order.Order) error
 		},
 	); err != nil {
 		return fmt.Errorf("failed to add accrual to order %s: %w", o.ID, err)
-	}
-
-	if err = queries.UpdateStatus(
-		ctx,
-		db.UpdateStatusParams{
-			NameStatus: string(o.Status),
-			OrderNo:    o.ID,
-		},
-	); err != nil {
-		return fmt.Errorf("failed to update status->(%s) for order %s: %w",
-			string(o.Status), o.ID, err)
 	}
 
 	if err = tx.Commit(ctx); err != nil {

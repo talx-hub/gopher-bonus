@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -67,11 +68,16 @@ func (q *Queries) FindOrderByID(ctx context.Context, orderNo string) (int32, err
 }
 
 const listByUserID = `-- name: ListByUserID :many
-SELECT acc_o.order_no, statuses.name_status, uploaded_at, public.accruals.amount AS accrual
+SELECT
+    order_no,
+    statuses.name_status,
+    uploaded_at,
+    COALESCE(accruals.amount, 0) AS accrual
 FROM accrued_orders AS acc_o
-    JOIN statuses ON acc_o.id_status = statuses.id_status
-    JOIN public.accruals ON acc_o.id_acc_order = public.accruals.id_acc_order
+         JOIN statuses ON acc_o.id_status = statuses.id_status
+         LEFT JOIN accruals ON acc_o.id_acc_order = accruals.id_acc_order
 WHERE acc_o.id_user=$1
+ORDER BY uploaded_at DESC
 `
 
 type ListByUserIDRow struct {
@@ -106,7 +112,7 @@ func (q *Queries) ListByUserID(ctx context.Context, idUser int32) ([]ListByUserI
 	return items, nil
 }
 
-const updateStatus = `-- name: UpdateStatus :exec
+const updateStatus = `-- name: UpdateStatus :execresult
 UPDATE accrued_orders
 SET id_status=(
     SELECT id_status
@@ -120,7 +126,6 @@ type UpdateStatusParams struct {
 	OrderNo    string
 }
 
-func (q *Queries) UpdateStatus(ctx context.Context, arg UpdateStatusParams) error {
-	_, err := q.db.Exec(ctx, updateStatus, arg.NameStatus, arg.OrderNo)
-	return err
+func (q *Queries) UpdateStatus(ctx context.Context, arg UpdateStatusParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, updateStatus, arg.NameStatus, arg.OrderNo)
 }
