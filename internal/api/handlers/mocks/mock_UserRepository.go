@@ -61,15 +61,26 @@ type MockUserRepository_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//   - ctx
-//   - u
+//   - ctx context.Context
+//   - u *user.User
 func (_e *MockUserRepository_Expecter) Create(ctx interface{}, u interface{}) *MockUserRepository_Create_Call {
 	return &MockUserRepository_Create_Call{Call: _e.mock.On("Create", ctx, u)}
 }
 
 func (_c *MockUserRepository_Create_Call) Run(run func(ctx context.Context, u *user.User)) *MockUserRepository_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*user.User))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *user.User
+		if args[1] != nil {
+			arg1 = args[1].(*user.User)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -107,15 +118,26 @@ type MockUserRepository_Exists_Call struct {
 }
 
 // Exists is a helper method to define mock.On call
-//   - ctx
-//   - loginHash
+//   - ctx context.Context
+//   - loginHash string
 func (_e *MockUserRepository_Expecter) Exists(ctx interface{}, loginHash interface{}) *MockUserRepository_Exists_Call {
 	return &MockUserRepository_Exists_Call{Call: _e.mock.On("Exists", ctx, loginHash)}
 }
 
 func (_c *MockUserRepository_Exists_Call) Run(run func(ctx context.Context, loginHash string)) *MockUserRepository_Exists_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -162,15 +184,26 @@ type MockUserRepository_FindByID_Call struct {
 }
 
 // FindByID is a helper method to define mock.On call
-//   - ctx
-//   - id
+//   - ctx context.Context
+//   - id string
 func (_e *MockUserRepository_Expecter) FindByID(ctx interface{}, id interface{}) *MockUserRepository_FindByID_Call {
 	return &MockUserRepository_FindByID_Call{Call: _e.mock.On("FindByID", ctx, id)}
 }
 
 func (_c *MockUserRepository_FindByID_Call) Run(run func(ctx context.Context, id string)) *MockUserRepository_FindByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -217,15 +250,26 @@ type MockUserRepository_FindByLogin_Call struct {
 }
 
 // FindByLogin is a helper method to define mock.On call
-//   - ctx
-//   - loginHash
+//   - ctx context.Context
+//   - loginHash string
 func (_e *MockUserRepository_Expecter) FindByLogin(ctx interface{}, loginHash interface{}) *MockUserRepository_FindByLogin_Call {
 	return &MockUserRepository_FindByLogin_Call{Call: _e.mock.On("FindByLogin", ctx, loginHash)}
 }
 
 func (_c *MockUserRepository_FindByLogin_Call) Run(run func(ctx context.Context, loginHash string)) *MockUserRepository_FindByLogin_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }

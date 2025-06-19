@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,6 +14,7 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
 	"github.com/talx-hub/gopher-bonus/internal/repo/internal/db"
+	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
 type connectionPool interface {
@@ -103,7 +103,7 @@ func (r *UserRepository) FindByLogin(ctx context.Context, loginHash string,
 	}
 
 	return user.User{
-		ID:           strconv.FormatInt(int64(u.IDUser), 10),
+		ID:           u.IDUser,
 		LoginHash:    u.HashLogin,
 		PasswordHash: u.HashPassword,
 	}, nil
@@ -112,20 +112,14 @@ func (r *UserRepository) FindByID(ctx context.Context, id string,
 ) (user.User, error) {
 	queries := db.New(r.pool)
 
-	idParsed, err := strconv.ParseInt(id, 10, 32)
-	if err != nil {
-		return user.User{},
-			fmt.Errorf("failed to convert user ID to int32: %w", err)
-	}
-
-	u, err := queries.FindUserByID(ctx, int32(idParsed))
+	u, err := queries.FindUserByID(ctx, id)
 	if err != nil {
 		return user.User{},
 			fmt.Errorf("failed to find user by ID in DB: %w", err)
 	}
 
 	return user.User{
-		ID:           strconv.FormatInt(int64(u.IDUser), 10),
+		ID:           u.IDUser,
 		LoginHash:    u.HashLogin,
 		PasswordHash: u.HashPassword,
 	}, nil
@@ -144,76 +138,21 @@ func NewOrderRepository(pool connectionPool, log *slog.Logger) *OrderRepository 
 	}
 }
 
-func (r *OrderRepository) Create(ctx context.Context, o *order.Order) error {
-	userInt, err := strconv.ParseInt(o.UserID, 10, 32)
-	if err != nil {
-		return fmt.Errorf("failed to parse userID from %s: %w", o.UserID, err)
-	}
-
-	queries := db.New(r.pool)
-	if err = queries.CreateOrder(ctx, db.CreateOrderParams{
-		IDUser:     int32(userInt),
-		OrderNo:    o.ID,
-		UploadedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		NameStatus: string(o.Status),
-	}); err != nil {
-		return fmt.Errorf("failed to create order in DB: %w", err)
-	}
-
-	return nil
-}
-
-func (r *OrderRepository) FindByID(ctx context.Context, orderID string,
-) (order.Order, error) {
-	queries := db.New(r.pool)
-	userID, err := queries.FindOrderByID(ctx, orderID)
-	if err != nil {
-		return order.Order{},
-			fmt.Errorf("failed to find userID by orderID %s: %w", orderID, err)
-	}
-	return order.Order{
-		UserID: strconv.FormatInt(int64(userID), 10),
-	}, nil
-}
-
-func (r *OrderRepository) ListByUserID(ctx context.Context, userID string,
-) ([]order.Order, error) {
-	userInt, err := strconv.ParseInt(userID, 10, 32)
-	if err != nil {
-		return nil,
-			fmt.Errorf("failed to parse userID from %s: %w", userID, err)
-	}
-	queries := db.New(r.pool)
-	ordersRaw, err := queries.ListByUserID(ctx, int32(userInt))
-	if err != nil {
-		return nil,
-			fmt.Errorf("failed to list orders by userID %s: %w", userID, err)
-	}
-
-	orders := make([]order.Order, len(ordersRaw))
-	for i, or := range ordersRaw {
-		accrual, err := model.FromPGNumeric(or.Accrual)
-		if err != nil {
-			r.log.LogAttrs(ctx,
-				slog.LevelError,
-				"invalid accrual from DB",
-				slog.Any("accrual", or.Accrual),
-				slog.Any(model.KeyLoggerError, err),
-			)
+func (r *OrderRepository) CreateOrder(ctx context.Context, o *order.Order) error {
+	if o.Type == order.TypeAccrual {
+		queries := db.New(r.pool)
+		if err := queries.CreateAccrual(ctx, db.CreateAccrualParams{
+			IDUser:     o.UserID,
+			NameOrder:  o.ID,
+			UploadedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+			NameStatus: string(o.Status),
+		}); err != nil {
+			return fmt.Errorf("failed to create order in DB: %w", err)
 		}
-		orders[i] = order.Order{
-			UploadedAt: or.UploadedAt.Time,
-			Status:     order.Status(or.NameStatus),
-			ID:         or.OrderNo,
-			UserID:     userID,
-			Accrual:    accrual,
-		}
+
+		return nil
 	}
 
-	return orders, nil
-}
-
-func (r *OrderRepository) UpdateOrder(ctx context.Context, o *order.Order) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin TX: %w", err)
@@ -228,33 +167,23 @@ func (r *OrderRepository) UpdateOrder(ctx context.Context, o *order.Order) error
 		}
 	}()
 
-	queries := db.New(tx)
-	res, err := queries.UpdateStatus(
-		ctx,
-		db.UpdateStatusParams{
-			NameStatus: string(o.Status),
-			OrderNo:    o.ID,
-		},
-	)
-	if err != nil || res.RowsAffected() == 0 {
-		return fmt.Errorf("failed to update status->(%s) for order %s: %w",
-			string(o.Status), o.ID, err)
+	accrued, withdrawn, err := r.getBalanceHelper(ctx, tx, o.UserID)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to get balance for userID %s: %w", o.UserID, err)
 	}
-	if o.Status != order.StatusProcessed {
-		if err = tx.Commit(ctx); err != nil {
-			return fmt.Errorf("failed to commit TX: %w", err)
-		}
-		return nil
+	if accrued.TotalKopecks() < o.Amount.TotalKopecks()+withdrawn.TotalKopecks() {
+		return serviceerrs.ErrInsufficientFunds
 	}
 
-	if err = queries.AddAccruedAmount(
-		ctx,
-		db.AddAccruedAmountParams{
-			OrderNo: o.ID,
-			Amount:  o.Accrual.ToPGNumeric(),
-		},
-	); err != nil {
-		return fmt.Errorf("failed to add accrual to order %s: %w", o.ID, err)
+	queries := db.New(tx)
+	if err := queries.CreateWithdrawal(ctx, db.CreateWithdrawalParams{
+		IDUser:      o.UserID,
+		NameOrder:   o.ID,
+		ProcessedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		Amount:      o.Amount.ToPGNumeric(),
+	}); err != nil {
+		return fmt.Errorf("failed to withdraw in DB: %w", err)
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -262,4 +191,165 @@ func (r *OrderRepository) UpdateOrder(ctx context.Context, o *order.Order) error
 	}
 
 	return nil
+}
+
+func (r *OrderRepository) FindUserIDByAccrualID(ctx context.Context, accrualID string,
+) (string, error) {
+	queries := db.New(r.pool)
+	userID, err := queries.FindOrderByID(ctx, accrualID)
+	if err != nil {
+		return "",
+			fmt.Errorf("failed to find userID by orderID %s: %w", accrualID, err)
+	}
+	return userID, nil
+}
+
+func (r *OrderRepository) ListOrdersByUser(ctx context.Context,
+	userID string, tp order.Type,
+) ([]order.Order, error) {
+	if tp == order.TypeAccrual {
+		return listAccruals(ctx, userID, r.pool, r.log)
+	}
+	return listWithdrawals(ctx, userID, r.pool, r.log)
+}
+
+func listAccruals(ctx context.Context,
+	userID string, pool connectionPool, log *slog.Logger,
+) ([]order.Order, error) {
+	queries := db.New(pool)
+	ordersRaw, err := queries.ListAccrualsByUserID(ctx, userID)
+	if err != nil {
+		return nil,
+			fmt.Errorf("failed to list orders by userID %s: %w", userID, err)
+	}
+
+	orders := make([]order.Order, len(ordersRaw))
+	for i, or := range ordersRaw {
+		accrual, err := model.FromPGNumeric(or.Accrual)
+		if err != nil {
+			log.LogAttrs(ctx,
+				slog.LevelError,
+				"invalid accrual from DB",
+				slog.Any("accrual", or.Accrual),
+				slog.Any(model.KeyLoggerError, err),
+			)
+		}
+		orders[i] = order.Order{
+			CreatedAt: or.UploadedAt.Time,
+			Status:    order.Status(or.NameStatus),
+			ID:        or.NameOrder,
+			UserID:    userID,
+			Amount:    accrual,
+		}
+	}
+
+	return orders, nil
+}
+
+func listWithdrawals(ctx context.Context,
+	userID string, pool connectionPool, log *slog.Logger,
+) ([]order.Order, error) {
+	queries := db.New(pool)
+	ordersRaw, err := queries.ListWithdrawalsByUser(ctx, userID)
+	if err != nil {
+		return nil,
+			fmt.Errorf("failed to list withdrawals by userID %s: %w", userID, err)
+	}
+
+	orders := make([]order.Order, len(ordersRaw))
+	for i, or := range ordersRaw {
+		withdrawed, err := model.FromPGNumeric(or.Amount)
+		if err != nil {
+			log.LogAttrs(ctx,
+				slog.LevelError,
+				"invalid withdrawal from DB",
+				slog.Any("withdrawal", or.Amount),
+				slog.Any(model.KeyLoggerError, err),
+			)
+		}
+		orders[i] = order.Order{
+			CreatedAt: or.ProcessedAt.Time,
+			ID:        or.NameOrder,
+			UserID:    userID,
+			Amount:    withdrawed,
+		}
+	}
+
+	return orders, nil
+}
+
+func (r *OrderRepository) UpdateAccrualStatus(ctx context.Context, o *order.Order) error {
+	queries := db.New(r.pool)
+	res, err := queries.UpdateAccrualStatus(
+		ctx,
+		db.UpdateAccrualStatusParams{
+			NameStatus: string(o.Status),
+			NameOrder:  o.ID,
+		},
+	)
+	if err != nil || res.RowsAffected() == 0 {
+		return fmt.Errorf("failed to update status->(%s) for order %s: %w",
+			string(o.Status), o.ID, err)
+	}
+	return nil
+}
+
+func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
+) (model.Amount, model.Amount, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to begin TX: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			r.log.LogAttrs(ctx,
+				slog.LevelError,
+				"failed to rollback TX",
+				slog.Any(model.KeyLoggerError, err),
+			)
+		}
+	}()
+
+	accrued, withdrawn, err := r.getBalanceHelper(ctx, tx, userID)
+	if err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to get balance for user %s: %w", userID, err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to commit TX: %w", err)
+	}
+
+	return accrued, withdrawn, nil
+}
+
+func (r *OrderRepository) getBalanceHelper(ctx context.Context,
+	tx connectionPool, userID string,
+) (model.Amount, model.Amount, error) {
+	queries := db.New(tx)
+	a, err := queries.GetAccruedAmount(ctx, userID)
+	if err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to get accruals %w", err)
+	}
+	accruedAllTime, err := model.FromPGNumeric(a)
+	if err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to convert accruals from pgtype.Numeric: %w", err)
+	}
+
+	wd, err := queries.GetWithdrawnAmount(ctx, userID)
+	if err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to get withdrawals: %w", err)
+	}
+	withdrawnAllTime, err := model.FromPGNumeric(wd)
+	if err != nil {
+		return model.Amount{}, model.Amount{},
+			fmt.Errorf("failed to convert withdrawals from pgtype.Numeric: %w", err)
+	}
+
+	return accruedAllTime, withdrawnAllTime, nil
 }

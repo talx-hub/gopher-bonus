@@ -8,6 +8,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
+	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 )
 
@@ -38,12 +39,12 @@ func (_m *MockOrderRepository) EXPECT() *MockOrderRepository_Expecter {
 	return &MockOrderRepository_Expecter{mock: &_m.Mock}
 }
 
-// Create provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) Create(ctx context.Context, o *order.Order) error {
+// CreateOrder provides a mock function for the type MockOrderRepository
+func (_mock *MockOrderRepository) CreateOrder(ctx context.Context, o *order.Order) error {
 	ret := _mock.Called(ctx, o)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Create")
+		panic("no return value specified for CreateOrder")
 	}
 
 	var r0 error
@@ -55,143 +56,311 @@ func (_mock *MockOrderRepository) Create(ctx context.Context, o *order.Order) er
 	return r0
 }
 
-// MockOrderRepository_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
-type MockOrderRepository_Create_Call struct {
+// MockOrderRepository_CreateOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOrder'
+type MockOrderRepository_CreateOrder_Call struct {
 	*mock.Call
 }
 
-// Create is a helper method to define mock.On call
-//   - ctx
-//   - o
-func (_e *MockOrderRepository_Expecter) Create(ctx interface{}, o interface{}) *MockOrderRepository_Create_Call {
-	return &MockOrderRepository_Create_Call{Call: _e.mock.On("Create", ctx, o)}
+// CreateOrder is a helper method to define mock.On call
+//   - ctx context.Context
+//   - o *order.Order
+func (_e *MockOrderRepository_Expecter) CreateOrder(ctx interface{}, o interface{}) *MockOrderRepository_CreateOrder_Call {
+	return &MockOrderRepository_CreateOrder_Call{Call: _e.mock.On("CreateOrder", ctx, o)}
 }
 
-func (_c *MockOrderRepository_Create_Call) Run(run func(ctx context.Context, o *order.Order)) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_CreateOrder_Call) Run(run func(ctx context.Context, o *order.Order)) *MockOrderRepository_CreateOrder_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*order.Order))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *order.Order
+		if args[1] != nil {
+			arg1 = args[1].(*order.Order)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
 
-func (_c *MockOrderRepository_Create_Call) Return(err error) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_CreateOrder_Call) Return(err error) *MockOrderRepository_CreateOrder_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockOrderRepository_Create_Call) RunAndReturn(run func(ctx context.Context, o *order.Order) error) *MockOrderRepository_Create_Call {
+func (_c *MockOrderRepository_CreateOrder_Call) RunAndReturn(run func(ctx context.Context, o *order.Order) error) *MockOrderRepository_CreateOrder_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindByID provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) FindByID(ctx context.Context, id string) (order.Order, error) {
-	ret := _mock.Called(ctx, id)
+// FindUserIDByAccrualID provides a mock function for the type MockOrderRepository
+func (_mock *MockOrderRepository) FindUserIDByAccrualID(ctx context.Context, accrualID string) (string, error) {
+	ret := _mock.Called(ctx, accrualID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindByID")
+		panic("no return value specified for FindUserIDByAccrualID")
 	}
 
-	var r0 order.Order
+	var r0 string
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (order.Order, error)); ok {
-		return returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return returnFunc(ctx, accrualID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) order.Order); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = returnFunc(ctx, accrualID)
 	} else {
-		r0 = ret.Get(0).(order.Order)
+		r0 = ret.Get(0).(string)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, id)
+		r1 = returnFunc(ctx, accrualID)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockOrderRepository_FindByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByID'
-type MockOrderRepository_FindByID_Call struct {
+// MockOrderRepository_FindUserIDByAccrualID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindUserIDByAccrualID'
+type MockOrderRepository_FindUserIDByAccrualID_Call struct {
 	*mock.Call
 }
 
-// FindByID is a helper method to define mock.On call
-//   - ctx
-//   - id
-func (_e *MockOrderRepository_Expecter) FindByID(ctx interface{}, id interface{}) *MockOrderRepository_FindByID_Call {
-	return &MockOrderRepository_FindByID_Call{Call: _e.mock.On("FindByID", ctx, id)}
+// FindUserIDByAccrualID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accrualID string
+func (_e *MockOrderRepository_Expecter) FindUserIDByAccrualID(ctx interface{}, accrualID interface{}) *MockOrderRepository_FindUserIDByAccrualID_Call {
+	return &MockOrderRepository_FindUserIDByAccrualID_Call{Call: _e.mock.On("FindUserIDByAccrualID", ctx, accrualID)}
 }
 
-func (_c *MockOrderRepository_FindByID_Call) Run(run func(ctx context.Context, id string)) *MockOrderRepository_FindByID_Call {
+func (_c *MockOrderRepository_FindUserIDByAccrualID_Call) Run(run func(ctx context.Context, accrualID string)) *MockOrderRepository_FindUserIDByAccrualID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByID_Call) Return(order1 order.Order, err error) *MockOrderRepository_FindByID_Call {
-	_c.Call.Return(order1, err)
+func (_c *MockOrderRepository_FindUserIDByAccrualID_Call) Return(s string, err error) *MockOrderRepository_FindUserIDByAccrualID_Call {
+	_c.Call.Return(s, err)
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByID_Call) RunAndReturn(run func(ctx context.Context, id string) (order.Order, error)) *MockOrderRepository_FindByID_Call {
+func (_c *MockOrderRepository_FindUserIDByAccrualID_Call) RunAndReturn(run func(ctx context.Context, accrualID string) (string, error)) *MockOrderRepository_FindUserIDByAccrualID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindByUserID provides a mock function for the type MockOrderRepository
-func (_mock *MockOrderRepository) ListByUserID(ctx context.Context, userID string) ([]order.Order, error) {
+// GetBalance provides a mock function for the type MockOrderRepository
+func (_mock *MockOrderRepository) GetBalance(ctx context.Context, userID string) (model.Amount, model.Amount, error) {
 	ret := _mock.Called(ctx, userID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindByUserID")
+		panic("no return value specified for GetBalance")
+	}
+
+	var r0 model.Amount
+	var r1 model.Amount
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (model.Amount, model.Amount, error)); ok {
+		return returnFunc(ctx, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) model.Amount); ok {
+		r0 = returnFunc(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(model.Amount)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) model.Amount); ok {
+		r1 = returnFunc(ctx, userID)
+	} else {
+		r1 = ret.Get(1).(model.Amount)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = returnFunc(ctx, userID)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockOrderRepository_GetBalance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBalance'
+type MockOrderRepository_GetBalance_Call struct {
+	*mock.Call
+}
+
+// GetBalance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+func (_e *MockOrderRepository_Expecter) GetBalance(ctx interface{}, userID interface{}) *MockOrderRepository_GetBalance_Call {
+	return &MockOrderRepository_GetBalance_Call{Call: _e.mock.On("GetBalance", ctx, userID)}
+}
+
+func (_c *MockOrderRepository_GetBalance_Call) Run(run func(ctx context.Context, userID string)) *MockOrderRepository_GetBalance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOrderRepository_GetBalance_Call) Return(amount model.Amount, amount1 model.Amount, err error) *MockOrderRepository_GetBalance_Call {
+	_c.Call.Return(amount, amount1, err)
+	return _c
+}
+
+func (_c *MockOrderRepository_GetBalance_Call) RunAndReturn(run func(ctx context.Context, userID string) (model.Amount, model.Amount, error)) *MockOrderRepository_GetBalance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListOrdersByUser provides a mock function for the type MockOrderRepository
+func (_mock *MockOrderRepository) ListOrdersByUser(ctx context.Context, userID string, tp order.Type) ([]order.Order, error) {
+	ret := _mock.Called(ctx, userID, tp)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListOrdersByUser")
 	}
 
 	var r0 []order.Order
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]order.Order, error)); ok {
-		return returnFunc(ctx, userID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, order.Type) ([]order.Order, error)); ok {
+		return returnFunc(ctx, userID, tp)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []order.Order); ok {
-		r0 = returnFunc(ctx, userID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, order.Type) []order.Order); ok {
+		r0 = returnFunc(ctx, userID, tp)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]order.Order)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, userID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, order.Type) error); ok {
+		r1 = returnFunc(ctx, userID, tp)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockOrderRepository_FindByUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByUserID'
-type MockOrderRepository_FindByUserID_Call struct {
+// MockOrderRepository_ListOrdersByUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListOrdersByUser'
+type MockOrderRepository_ListOrdersByUser_Call struct {
 	*mock.Call
 }
 
-// FindByUserID is a helper method to define mock.On call
-//   - ctx
-//   - userID
-func (_e *MockOrderRepository_Expecter) FindByUserID(ctx interface{}, userID interface{}) *MockOrderRepository_FindByUserID_Call {
-	return &MockOrderRepository_FindByUserID_Call{Call: _e.mock.On("FindByUserID", ctx, userID)}
+// ListOrdersByUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - tp order.Type
+func (_e *MockOrderRepository_Expecter) ListOrdersByUser(ctx interface{}, userID interface{}, tp interface{}) *MockOrderRepository_ListOrdersByUser_Call {
+	return &MockOrderRepository_ListOrdersByUser_Call{Call: _e.mock.On("ListOrdersByUser", ctx, userID, tp)}
 }
 
-func (_c *MockOrderRepository_FindByUserID_Call) Run(run func(ctx context.Context, userID string)) *MockOrderRepository_FindByUserID_Call {
+func (_c *MockOrderRepository_ListOrdersByUser_Call) Run(run func(ctx context.Context, userID string, tp order.Type)) *MockOrderRepository_ListOrdersByUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 order.Type
+		if args[2] != nil {
+			arg2 = args[2].(order.Type)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByUserID_Call) Return(orders []order.Order, err error) *MockOrderRepository_FindByUserID_Call {
+func (_c *MockOrderRepository_ListOrdersByUser_Call) Return(orders []order.Order, err error) *MockOrderRepository_ListOrdersByUser_Call {
 	_c.Call.Return(orders, err)
 	return _c
 }
 
-func (_c *MockOrderRepository_FindByUserID_Call) RunAndReturn(run func(ctx context.Context, userID string) ([]order.Order, error)) *MockOrderRepository_FindByUserID_Call {
+func (_c *MockOrderRepository_ListOrdersByUser_Call) RunAndReturn(run func(ctx context.Context, userID string, tp order.Type) ([]order.Order, error)) *MockOrderRepository_ListOrdersByUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateAccrualStatus provides a mock function for the type MockOrderRepository
+func (_mock *MockOrderRepository) UpdateAccrualStatus(ctx context.Context, o *order.Order) error {
+	ret := _mock.Called(ctx, o)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateAccrualStatus")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *order.Order) error); ok {
+		r0 = returnFunc(ctx, o)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockOrderRepository_UpdateAccrualStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateAccrualStatus'
+type MockOrderRepository_UpdateAccrualStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateAccrualStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - o *order.Order
+func (_e *MockOrderRepository_Expecter) UpdateAccrualStatus(ctx interface{}, o interface{}) *MockOrderRepository_UpdateAccrualStatus_Call {
+	return &MockOrderRepository_UpdateAccrualStatus_Call{Call: _e.mock.On("UpdateAccrualStatus", ctx, o)}
+}
+
+func (_c *MockOrderRepository_UpdateAccrualStatus_Call) Run(run func(ctx context.Context, o *order.Order)) *MockOrderRepository_UpdateAccrualStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *order.Order
+		if args[1] != nil {
+			arg1 = args[1].(*order.Order)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOrderRepository_UpdateAccrualStatus_Call) Return(err error) *MockOrderRepository_UpdateAccrualStatus_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockOrderRepository_UpdateAccrualStatus_Call) RunAndReturn(run func(ctx context.Context, o *order.Order) error) *MockOrderRepository_UpdateAccrualStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

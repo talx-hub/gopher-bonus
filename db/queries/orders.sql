@@ -1,39 +1,52 @@
--- name: CreateOrder :exec
-INSERT INTO accrued_orders (id_user, order_no, uploaded_at, id_status)
+-- name: CreateAccrual :exec
+INSERT INTO accrued_orders (id_user, name_order, uploaded_at, id_status)
 VALUES ($1, $2, $3,
         (SELECT public.statuses.id_status
          FROM statuses
          WHERE name_status=$4));
 
+-- name: CreateWithdrawal :exec
+INSERT INTO withdrawn_orders(id_user, name_order, processed_at, amount)
+VALUES ($1, $2, $3, $4);
 
 -- name: FindOrderByID :one
 SELECT id_user FROM accrued_orders
-WHERE order_no=$1;
+WHERE name_order=$1;
 
--- name: ListByUserID :many
+-- name: ListAccrualsByUserID :many
 SELECT
-    order_no,
+    name_order,
     statuses.name_status,
     uploaded_at,
-    COALESCE(accruals.amount, 0) AS accrual
+    COALESCE(amount, 0) AS accrual
 FROM accrued_orders AS acc_o
          JOIN statuses ON acc_o.id_status = statuses.id_status
-         LEFT JOIN accruals ON acc_o.id_acc_order = accruals.id_acc_order
 WHERE acc_o.id_user=$1
 ORDER BY uploaded_at DESC;
 
--- name: AddAccruedAmount :exec
-INSERT INTO accruals (id_acc_order, amount)
-VALUES ((SELECT id_acc_order
-         FROM accrued_orders
-         WHERE order_no=$1),
-        $2);
-
--- name: UpdateStatus :execresult
+-- name: UpdateAccrualStatus :execresult
 UPDATE accrued_orders
 SET id_status=(
     SELECT id_status
     FROM statuses
-    WHERE name_status=$1)
-WHERE order_no=$2;
+    WHERE name_status=$2),
+    amount=$3
+WHERE name_order=$1;
 
+-- name: GetAccruedAmount :one
+SELECT sum(amount)::decimal(12,2) as accrued
+FROM accrued_orders
+WHERE id_user=$1
+GROUP BY id_user;
+
+-- name: GetWithdrawnAmount :one
+SELECT sum(amount)::decimal(12,2) as withdrawn
+FROM withdrawn_orders
+WHERE id_user=$1
+GROUP BY id_user;
+
+-- name: ListWithdrawalsByUser :many
+SELECT name_order, amount, processed_at
+FROM withdrawn_orders
+WHERE id_user=$1
+ORDER BY processed_at DESC;

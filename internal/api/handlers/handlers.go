@@ -18,7 +18,6 @@ import (
 
 	"github.com/talx-hub/gopher-bonus/internal/api/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/model/bonus"
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
@@ -41,9 +40,11 @@ type AuthHandler struct {
 }
 
 type OrderRepository interface {
-	Create(ctx context.Context, o *order.Order) error
-	FindByID(ctx context.Context, id string) (order.Order, error)
-	ListByUserID(ctx context.Context, userID string) ([]order.Order, error)
+	CreateOrder(ctx context.Context, o *order.Order) error
+	FindUserIDByAccrualID(ctx context.Context, accrualID string) (string, error)
+	ListOrdersByUser(ctx context.Context, userID string, tp order.Type) ([]order.Order, error)
+	UpdateAccrualStatus(ctx context.Context, o *order.Order) error
+	GetBalance(ctx context.Context, userID string) (model.Amount, model.Amount, error)
 }
 
 type userRetriever struct{}
@@ -70,22 +71,6 @@ type OrderHandler struct {
 	userRetriever
 	logger    *slog.Logger
 	orderRepo OrderRepository
-	userRepo  UserRepository
-}
-
-type BonusRepository interface {
-	CreateTransaction(ctx context.Context, t *bonus.Transaction) error
-	GetBalance(ctx context.Context, userID string,
-	) (model.Amount, model.Amount, error)
-	ListTransactionsByUser(
-		ctx context.Context, userID string, tp bonus.TransactionType,
-	) ([]bonus.Transaction, error)
-}
-
-type TransactionHandler struct {
-	userRetriever
-	logger    *slog.Logger
-	bonusRepo BonusRepository
 	userRepo  UserRepository
 }
 
@@ -260,13 +245,14 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := h.orderRepo.FindByID(r.Context(), orderID)
+	foundUserID, err := h.orderRepo.FindUserIDByAccrualID(r.Context(), orderID)
 	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
-		err = h.orderRepo.Create(r.Context(), &order.Order{
-			UploadedAt: time.Now(),
-			Status:     order.StatusNew,
-			ID:         orderID,
-			UserID:     userID,
+		err = h.orderRepo.CreateOrder(r.Context(), &order.Order{
+			CreatedAt: time.Now(),
+			ID:        orderID,
+			UserID:    userID,
+			Status:    order.StatusNew,
+			Type:      order.TypeAccrual,
 		})
 		if err != nil {
 			h.logger.LogAttrs(r.Context(),
@@ -290,7 +276,7 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if userID == o.UserID {
+	if userID == foundUserID {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -310,7 +296,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := h.orderRepo.ListByUserID(r.Context(), userID)
+	orders, err := h.orderRepo.ListOrdersByUser(r.Context(), userID, order.TypeAccrual)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
@@ -338,7 +324,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
+func (h *OrderHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.retrieveUserID(r.Context(), h.userRepo)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
@@ -351,7 +337,7 @@ func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	currentSum, withdrawals, err := h.bonusRepo.GetBalance(r.Context(), userID)
+	currentSum, withdrawals, err := h.orderRepo.GetBalance(r.Context(), userID)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
@@ -379,7 +365,7 @@ func (h *TransactionHandler) GetBalance(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.retrieveUserID(r.Context(), h.userRepo)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
@@ -420,12 +406,12 @@ func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.bonusRepo.CreateTransaction(r.Context(),
-		&bonus.Transaction{
-			ID:        uuid.NewString(),
+	err = h.orderRepo.CreateOrder(r.Context(),
+		&order.Order{
+			ID:        request.OrderID,
 			UserID:    userID,
 			CreatedAt: time.Now(),
-			Type:      bonus.TypeWithdrawal,
+			Type:      order.TypeWithdrawal,
 			Amount:    amount,
 		},
 	)
@@ -436,7 +422,7 @@ func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, serviceerrs.ErrInsufficientFunds) {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"not enough bonus amount",
+			"insufficient funds",
 			slog.String("order", request.OrderID),
 			slog.Float64("requested", request.Sum),
 			slog.Any(model.KeyLoggerError, err),
@@ -454,7 +440,7 @@ func (h *TransactionHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
 }
 
-func (h *TransactionHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
+func (h *OrderHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.retrieveUserID(r.Context(), h.userRepo)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
@@ -467,8 +453,8 @@ func (h *TransactionHandler) GetWithdrawals(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	withdrawals, err := h.bonusRepo.ListTransactionsByUser(
-		r.Context(), userID, bonus.TypeWithdrawal)
+	withdrawals, err := h.orderRepo.ListOrdersByUser(
+		r.Context(), userID, order.TypeWithdrawal)
 	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,

@@ -8,23 +8,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Accrual struct {
-	IDAcc      int32
-	IDAccOrder int32
-	Amount     pgtype.Numeric
-}
-
 type AccruedOrder struct {
 	IDAccOrder int32
-	IDUser     int32
-	OrderNo    string
+	IDUser     string
+	NameOrder  string
 	UploadedAt pgtype.Timestamptz
 	IDStatus   int32
+	Amount     pgtype.Numeric
 }
 
 type PasswordHash struct {
 	IDPassword   int32
-	IDUser       int32
+	IDUser       string
 	HashPassword string
 }
 
@@ -34,20 +29,14 @@ type Status struct {
 }
 
 type UserHash struct {
-	IDUser    int32
+	IDUser    string
 	HashLogin string
-}
-
-type Withdraw struct {
-	IDWithdraw       int32
-	IDWithdrawnOrder pgtype.Int4
-	Amount           pgtype.Numeric
 }
 
 type WithdrawnOrder struct {
 	IDWithdrawnOrder int32
-	IDUser           int32
-	OrderNo          string
+	IDUser           string
+	NameOrder        string
 	ProcessedAt      pgtype.Timestamptz
-	IDStatus         int32
+	Amount           pgtype.Numeric
 }

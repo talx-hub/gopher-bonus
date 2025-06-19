@@ -15,10 +15,19 @@ const (
 	StatusProcessed  Status = "PROCESSED"
 )
 
+type Type string
+
+const (
+	TypeAccrual    Type = "accrual"
+	TypeWithdrawal Type = "withdrawal"
+)
+
 type Order struct {
-	UploadedAt time.Time    `json:"uploaded_at"`
-	Status     Status       `json:"status"`
-	ID         string       `json:"id"`
-	UserID     string       `json:"user_id"`
-	Accrual    model.Amount `json:"accrual,omitempty"`
+	CreatedAt time.Time    `json:"created_at"`
+	ID        string       `json:"id"`
+	UserID    string       `json:"user_id"`
+	OrderID   string       `json:"order_id"`
+	Status    Status       `json:"status"`
+	Type      Type         `json:"type"`
+	Amount    model.Amount `json:"amount"`
 }

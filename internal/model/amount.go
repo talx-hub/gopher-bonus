@@ -51,6 +51,10 @@ func (a *Amount) ToPGNumeric() pgtype.Numeric {
 	}
 }
 
+func (a *Amount) TotalKopecks() int64 {
+	return a.roubles*kopInRub + a.kopeck
+}
+
 func FromPGNumeric(n pgtype.Numeric) (Amount, error) {
 	if !n.Valid || n.NaN {
 		return Amount{},

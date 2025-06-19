@@ -60,14 +60,20 @@ type MockAccrualSemaphore_AcquireWithTimeout_Call struct {
 }
 
 // AcquireWithTimeout is a helper method to define mock.On call
-//   - timeout
+//   - timeout time.Duration
 func (_e *MockAccrualSemaphore_Expecter) AcquireWithTimeout(timeout interface{}) *MockAccrualSemaphore_AcquireWithTimeout_Call {
 	return &MockAccrualSemaphore_AcquireWithTimeout_Call{Call: _e.mock.On("AcquireWithTimeout", timeout)}
 }
 
 func (_c *MockAccrualSemaphore_AcquireWithTimeout_Call) Run(run func(timeout time.Duration)) *MockAccrualSemaphore_AcquireWithTimeout_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(time.Duration))
+		var arg0 time.Duration
+		if args[0] != nil {
+			arg0 = args[0].(time.Duration)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }
@@ -94,14 +100,20 @@ type MockAccrualSemaphore_ChangeMaxRequests_Call struct {
 }
 
 // ChangeMaxRequests is a helper method to define mock.On call
-//   - newMaxRequests
+//   - newMaxRequests uint64
 func (_e *MockAccrualSemaphore_Expecter) ChangeMaxRequests(newMaxRequests interface{}) *MockAccrualSemaphore_ChangeMaxRequests_Call {
 	return &MockAccrualSemaphore_ChangeMaxRequests_Call{Call: _e.mock.On("ChangeMaxRequests", newMaxRequests)}
 }
 
 func (_c *MockAccrualSemaphore_ChangeMaxRequests_Call) Run(run func(newMaxRequests uint64)) *MockAccrualSemaphore_ChangeMaxRequests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64))
+		var arg0 uint64
+		if args[0] != nil {
+			arg0 = args[0].(uint64)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }

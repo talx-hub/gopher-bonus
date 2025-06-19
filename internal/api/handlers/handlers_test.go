@@ -272,7 +272,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	}
 }
 
-func TestAuthHandler_Login_not_use_repo(t *testing.T) {
+func TestAuthHandler_Login_bad_credentials(t *testing.T) {
 	tests := []struct {
 		name      string
 		login     string
@@ -395,7 +395,7 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
-			"test unexpected OrderRepo Create failure",
+			"test unexpected OrderRepo CreateOrder failure",
 			"user",
 			titleToOrderID["break-the-order-create"],
 			http.StatusInternalServerError,
@@ -416,22 +416,19 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 
 	orderRepo := mocks.NewMockOrderRepository(t)
 	orderRepo.EXPECT().
-		FindByID(mock.Anything, titleToOrderID["not-found"]).
-		Return(order.Order{}, serviceerrs.ErrNotFound)
+		FindUserIDByAccrualID(mock.Anything, titleToOrderID["not-found"]).
+		Return("", serviceerrs.ErrNotFound)
 	orderRepo.EXPECT().
-		FindByID(mock.Anything, titleToOrderID["found"]).
-		Return(order.Order{
-			ID:     "found",
-			UserID: "correct-user",
-		}, nil)
+		FindUserIDByAccrualID(mock.Anything, titleToOrderID["found"]).
+		Return("correct-user", nil)
 	orderRepo.EXPECT().
-		FindByID(mock.Anything, titleToOrderID["break-the-order-create"]).
-		Return(order.Order{}, serviceerrs.ErrNotFound)
+		FindUserIDByAccrualID(mock.Anything, titleToOrderID["break-the-order-create"]).
+		Return("", serviceerrs.ErrNotFound)
 	orderRepo.EXPECT().
-		FindByID(mock.Anything, titleToOrderID["break-the-order-find"]).
-		Return(order.Order{}, serviceerrs.ErrUnexpected)
+		FindUserIDByAccrualID(mock.Anything, titleToOrderID["break-the-order-find"]).
+		Return("", serviceerrs.ErrUnexpected)
 	orderRepo.EXPECT().
-		Create(mock.Anything, mock.Anything).
+		CreateOrder(mock.Anything, mock.Anything).
 		RunAndReturn(func(_ context.Context, o *order.Order) error {
 			if o.ID == titleToOrderID["break-the-order-create"] {
 				return serviceerrs.ErrUnexpected
@@ -484,11 +481,27 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 		})
 	}
 
-	orderRepo.AssertNotCalled(t, "FindByID", mock.Anything, "BAD")
-	orderRepo.AssertNotCalled(t, "FindByID", mock.Anything,
+	orderRepo.AssertNotCalled(t, "FindUserIDByAccrualID", mock.Anything, "BAD")
+	orderRepo.AssertNotCalled(t, "FindUserIDByAccrualID", mock.Anything,
 		titleToOrderID["does-not-mater"])
-	orderRepo.AssertNumberOfCalls(t, "FindByID", 5)
-	orderRepo.AssertNumberOfCalls(t, "Create", 2)
+	orderRepo.AssertNumberOfCalls(t, "FindUserIDByAccrualID", 5)
+	orderRepo.AssertNumberOfCalls(t, "CreateOrder", 2)
 
 	userRepo.AssertNumberOfCalls(t, "FindByID", 7)
+}
+
+func TestOrderHandler_GetOrders(t *testing.T) {
+
+}
+
+func TestOrderHandler_GetBalance(t *testing.T) {
+
+}
+
+func TestOrderHandler_Withdraw(t *testing.T) {
+
+}
+
+func TestOrderHandler_GetWithdrawals(t *testing.T) {
+
 }

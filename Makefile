@@ -47,3 +47,9 @@ migrate:
 generate:
 	envsubst < sqlc.yaml.tmpl > sqlc.yaml
 	sqlc generate
+
+mocks:
+	docker run --rm \
+		-v $(pwd):/src \
+		-w /src \
+		vektra/mockery:latest

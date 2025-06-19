@@ -5,7 +5,5 @@ BEGIN TRANSACTION;
     DROP TABLE statuses;
     DROP TABLE accrued_orders;
     DROP TABLE withdrawn_orders;
-    DROP TABLE accruals;
-    DROP TABLE withdraws;
 
 COMMIT;

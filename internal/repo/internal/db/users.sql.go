@@ -29,12 +29,12 @@ WHERE user_hashes.id_user = $1
 `
 
 type FindUserByIDRow struct {
-	IDUser       int32
+	IDUser       string
 	HashLogin    string
 	HashPassword string
 }
 
-func (q *Queries) FindUserByID(ctx context.Context, idUser int32) (FindUserByIDRow, error) {
+func (q *Queries) FindUserByID(ctx context.Context, idUser string) (FindUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, findUserByID, idUser)
 	var i FindUserByIDRow
 	err := row.Scan(&i.IDUser, &i.HashLogin, &i.HashPassword)
@@ -48,7 +48,7 @@ WHERE hash_login = $1
 `
 
 type FindUserByLoginRow struct {
-	IDUser       int32
+	IDUser       string
 	HashLogin    string
 	HashPassword string
 }
@@ -66,9 +66,9 @@ VALUES ($1)
 RETURNING id_user
 `
 
-func (q *Queries) InsertLoginHash(ctx context.Context, hashLogin string) (int32, error) {
+func (q *Queries) InsertLoginHash(ctx context.Context, hashLogin string) (string, error) {
 	row := q.db.QueryRow(ctx, insertLoginHash, hashLogin)
-	var id_user int32
+	var id_user string
 	err := row.Scan(&id_user)
 	return id_user, err
 }
@@ -79,7 +79,7 @@ VALUES ($1, $2)
 `
 
 type InsertPasswordHashParams struct {
-	IDUser       int32
+	IDUser       string
 	HashPassword string
 }
 

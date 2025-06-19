@@ -12,92 +12,123 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addAccruedAmount = `-- name: AddAccruedAmount :exec
-INSERT INTO accruals (id_acc_order, amount)
-VALUES ((SELECT id_acc_order
-         FROM accrued_orders
-         WHERE order_no=$1),
-        $2)
-`
-
-type AddAccruedAmountParams struct {
-	OrderNo string
-	Amount  pgtype.Numeric
-}
-
-func (q *Queries) AddAccruedAmount(ctx context.Context, arg AddAccruedAmountParams) error {
-	_, err := q.db.Exec(ctx, addAccruedAmount, arg.OrderNo, arg.Amount)
-	return err
-}
-
-const createOrder = `-- name: CreateOrder :exec
-INSERT INTO accrued_orders (id_user, order_no, uploaded_at, id_status)
+const createAccrual = `-- name: CreateAccrual :exec
+INSERT INTO accrued_orders (id_user, name_order, uploaded_at, id_status)
 VALUES ($1, $2, $3,
         (SELECT public.statuses.id_status
          FROM statuses
          WHERE name_status=$4))
 `
 
-type CreateOrderParams struct {
-	IDUser     int32
-	OrderNo    string
+type CreateAccrualParams struct {
+	IDUser     string
+	NameOrder  string
 	UploadedAt pgtype.Timestamptz
 	NameStatus string
 }
 
-func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) error {
-	_, err := q.db.Exec(ctx, createOrder,
+func (q *Queries) CreateAccrual(ctx context.Context, arg CreateAccrualParams) error {
+	_, err := q.db.Exec(ctx, createAccrual,
 		arg.IDUser,
-		arg.OrderNo,
+		arg.NameOrder,
 		arg.UploadedAt,
 		arg.NameStatus,
 	)
 	return err
 }
 
-const findOrderByID = `-- name: FindOrderByID :one
-SELECT id_user FROM accrued_orders
-WHERE order_no=$1
+const createWithdrawal = `-- name: CreateWithdrawal :exec
+INSERT INTO withdrawn_orders(id_user, name_order, processed_at, amount)
+VALUES ($1, $2, $3, $4)
 `
 
-func (q *Queries) FindOrderByID(ctx context.Context, orderNo string) (int32, error) {
-	row := q.db.QueryRow(ctx, findOrderByID, orderNo)
-	var id_user int32
+type CreateWithdrawalParams struct {
+	IDUser      string
+	NameOrder   string
+	ProcessedAt pgtype.Timestamptz
+	Amount      pgtype.Numeric
+}
+
+func (q *Queries) CreateWithdrawal(ctx context.Context, arg CreateWithdrawalParams) error {
+	_, err := q.db.Exec(ctx, createWithdrawal,
+		arg.IDUser,
+		arg.NameOrder,
+		arg.ProcessedAt,
+		arg.Amount,
+	)
+	return err
+}
+
+const findOrderByID = `-- name: FindOrderByID :one
+SELECT id_user FROM accrued_orders
+WHERE name_order=$1
+`
+
+func (q *Queries) FindOrderByID(ctx context.Context, nameOrder string) (string, error) {
+	row := q.db.QueryRow(ctx, findOrderByID, nameOrder)
+	var id_user string
 	err := row.Scan(&id_user)
 	return id_user, err
 }
 
-const listByUserID = `-- name: ListByUserID :many
+const getAccruedAmount = `-- name: GetAccruedAmount :one
+SELECT sum(amount)::decimal(12,2) as accrued
+FROM accrued_orders
+WHERE id_user=$1
+GROUP BY id_user
+`
+
+func (q *Queries) GetAccruedAmount(ctx context.Context, idUser string) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, getAccruedAmount, idUser)
+	var accrued pgtype.Numeric
+	err := row.Scan(&accrued)
+	return accrued, err
+}
+
+const getWithdrawnAmount = `-- name: GetWithdrawnAmount :one
+SELECT sum(amount)::decimal(12,2) as withdrawn
+FROM withdrawn_orders
+WHERE id_user=$1
+GROUP BY id_user
+`
+
+func (q *Queries) GetWithdrawnAmount(ctx context.Context, idUser string) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, getWithdrawnAmount, idUser)
+	var withdrawn pgtype.Numeric
+	err := row.Scan(&withdrawn)
+	return withdrawn, err
+}
+
+const listAccrualsByUserID = `-- name: ListAccrualsByUserID :many
 SELECT
-    order_no,
+    name_order,
     statuses.name_status,
     uploaded_at,
-    COALESCE(accruals.amount, 0) AS accrual
+    COALESCE(amount, 0) AS accrual
 FROM accrued_orders AS acc_o
          JOIN statuses ON acc_o.id_status = statuses.id_status
-         LEFT JOIN accruals ON acc_o.id_acc_order = accruals.id_acc_order
 WHERE acc_o.id_user=$1
 ORDER BY uploaded_at DESC
 `
 
-type ListByUserIDRow struct {
-	OrderNo    string
+type ListAccrualsByUserIDRow struct {
+	NameOrder  string
 	NameStatus string
 	UploadedAt pgtype.Timestamptz
 	Accrual    pgtype.Numeric
 }
 
-func (q *Queries) ListByUserID(ctx context.Context, idUser int32) ([]ListByUserIDRow, error) {
-	rows, err := q.db.Query(ctx, listByUserID, idUser)
+func (q *Queries) ListAccrualsByUserID(ctx context.Context, idUser string) ([]ListAccrualsByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listAccrualsByUserID, idUser)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListByUserIDRow
+	var items []ListAccrualsByUserIDRow
 	for rows.Next() {
-		var i ListByUserIDRow
+		var i ListAccrualsByUserIDRow
 		if err := rows.Scan(
-			&i.OrderNo,
+			&i.NameOrder,
 			&i.NameStatus,
 			&i.UploadedAt,
 			&i.Accrual,
@@ -112,20 +143,55 @@ func (q *Queries) ListByUserID(ctx context.Context, idUser int32) ([]ListByUserI
 	return items, nil
 }
 
-const updateStatus = `-- name: UpdateStatus :execresult
+const listWithdrawalsByUser = `-- name: ListWithdrawalsByUser :many
+SELECT name_order, amount, processed_at
+FROM withdrawn_orders
+WHERE id_user=$1
+ORDER BY processed_at DESC
+`
+
+type ListWithdrawalsByUserRow struct {
+	NameOrder   string
+	Amount      pgtype.Numeric
+	ProcessedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListWithdrawalsByUser(ctx context.Context, idUser string) ([]ListWithdrawalsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listWithdrawalsByUser, idUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWithdrawalsByUserRow
+	for rows.Next() {
+		var i ListWithdrawalsByUserRow
+		if err := rows.Scan(&i.NameOrder, &i.Amount, &i.ProcessedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateAccrualStatus = `-- name: UpdateAccrualStatus :execresult
 UPDATE accrued_orders
 SET id_status=(
     SELECT id_status
     FROM statuses
-    WHERE name_status=$1)
-WHERE order_no=$2
+    WHERE name_status=$2),
+    amount=$3
+WHERE name_order=$1
 `
 
-type UpdateStatusParams struct {
+type UpdateAccrualStatusParams struct {
+	NameOrder  string
 	NameStatus string
-	OrderNo    string
+	Amount     pgtype.Numeric
 }
 
-func (q *Queries) UpdateStatus(ctx context.Context, arg UpdateStatusParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, updateStatus, arg.NameStatus, arg.OrderNo)
+func (q *Queries) UpdateAccrualStatus(ctx context.Context, arg UpdateAccrualStatusParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, updateAccrualStatus, arg.NameOrder, arg.NameStatus, arg.Amount)
 }

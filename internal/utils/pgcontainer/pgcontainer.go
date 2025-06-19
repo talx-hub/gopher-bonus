@@ -44,6 +44,10 @@ func (c *PGContainer) GetDSN() string {
 }
 
 func (c *PGContainer) Close() {
+	if c.pgContainer == nil {
+		return
+	}
+
 	if err := c.dockerPool.Purge(c.pgContainer); err != nil {
 		c.log.ErrorContext(context.TODO(),
 			"failed to purge the postgres container",
@@ -61,7 +65,6 @@ func (c *PGContainer) RunContainer() error {
 	const pgPort = "5432/tcp"
 	c.pgContainer, err = c.dockerPool.RunWithOptions(
 		&dockertest.RunOptions{
-			Name:       "migrations-integration-tests",
 			Repository: "postgres",
 			Tag:        c.loadImageFromEnv(),
 			Env: []string{

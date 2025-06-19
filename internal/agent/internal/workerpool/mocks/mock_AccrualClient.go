@@ -70,15 +70,26 @@ type MockAccrualClient_GetOrderInfo_Call struct {
 }
 
 // GetOrderInfo is a helper method to define mock.On call
-//   - ctx
-//   - orderID
+//   - ctx context.Context
+//   - orderID string
 func (_e *MockAccrualClient_Expecter) GetOrderInfo(ctx interface{}, orderID interface{}) *MockAccrualClient_GetOrderInfo_Call {
 	return &MockAccrualClient_GetOrderInfo_Call{Call: _e.mock.On("GetOrderInfo", ctx, orderID)}
 }
 
 func (_c *MockAccrualClient_GetOrderInfo_Call) Run(run func(ctx context.Context, orderID string)) *MockAccrualClient_GetOrderInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
