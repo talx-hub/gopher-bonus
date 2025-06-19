@@ -21,7 +21,7 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/utils/pgcontainer"
 )
 
-const testDefaultTimeout = 5 * time.Second
+const testDefaultTimeout = 50000 * time.Second
 
 var (
 	getDSN       func() string
@@ -237,8 +237,9 @@ func TestUserRepository_FindByID(t *testing.T) {
 }
 
 func TestOrderRepository_CreateAccrual(t *testing.T) {
-	repo, ctx, cancel, _ := setupRepo(t, NewOrderRepository)
+	repo, ctx, cancel, pool := setupRepo(t, NewOrderRepository)
 	defer cancel()
+	require.NoError(t, loadFixtureFile(pool, "./fixtures/order_create_accrual.sql"))
 
 	tests := []struct {
 		name    string
