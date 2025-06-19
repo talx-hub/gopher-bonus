@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -167,7 +168,7 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, o *order.Order) error
 		}
 	}()
 
-	accrued, withdrawn, err := r.getBalanceHelper(ctx, tx, o.UserID)
+	accrued, withdrawn, err := r.getBalanceTX(ctx, tx, o.UserID)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to get balance for userID %s: %w", o.UserID, err)
@@ -207,6 +208,9 @@ func (r *OrderRepository) FindUserIDByAccrualID(ctx context.Context, accrualID s
 func (r *OrderRepository) ListOrdersByUser(ctx context.Context,
 	userID string, tp order.Type,
 ) ([]order.Order, error) {
+	if len(userID) == 0 {
+		return nil, errors.New("failed to list orders for empty user: userID must be not empty")
+	}
 	if tp == order.TypeAccrual {
 		return listAccruals(ctx, userID, r.pool, r.log)
 	}
@@ -258,7 +262,7 @@ func listWithdrawals(ctx context.Context,
 
 	orders := make([]order.Order, len(ordersRaw))
 	for i, or := range ordersRaw {
-		withdrawed, err := model.FromPGNumeric(or.Amount)
+		withdrew, err := model.FromPGNumeric(or.Amount)
 		if err != nil {
 			log.LogAttrs(ctx,
 				slog.LevelError,
@@ -271,7 +275,7 @@ func listWithdrawals(ctx context.Context,
 			CreatedAt: or.ProcessedAt.Time,
 			ID:        or.NameOrder,
 			UserID:    userID,
-			Amount:    withdrawed,
+			Amount:    withdrew,
 		}
 	}
 
@@ -311,7 +315,7 @@ func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
 		}
 	}()
 
-	accrued, withdrawn, err := r.getBalanceHelper(ctx, tx, userID)
+	accrued, withdrawn, err := r.getBalanceTX(ctx, tx, userID)
 	if err != nil {
 		return model.Amount{}, model.Amount{},
 			fmt.Errorf("failed to get balance for user %s: %w", userID, err)
@@ -325,31 +329,34 @@ func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
 	return accrued, withdrawn, nil
 }
 
-func (r *OrderRepository) getBalanceHelper(ctx context.Context,
+func (r *OrderRepository) getBalanceTX(ctx context.Context,
 	tx connectionPool, userID string,
 ) (model.Amount, model.Amount, error) {
 	queries := db.New(tx)
-	a, err := queries.GetAccruedAmount(ctx, userID)
+
+	accrued, err := getAmount(ctx, queries.GetAccruedAmount, userID)
 	if err != nil {
 		return model.Amount{}, model.Amount{},
 			fmt.Errorf("failed to get accruals %w", err)
 	}
-	accruedAllTime, err := model.FromPGNumeric(a)
-	if err != nil {
-		return model.Amount{}, model.Amount{},
-			fmt.Errorf("failed to convert accruals from pgtype.Numeric: %w", err)
-	}
-
-	wd, err := queries.GetWithdrawnAmount(ctx, userID)
+	withdrawn, err := getAmount(ctx, queries.GetWithdrawnAmount, userID)
 	if err != nil {
 		return model.Amount{}, model.Amount{},
 			fmt.Errorf("failed to get withdrawals: %w", err)
 	}
-	withdrawnAllTime, err := model.FromPGNumeric(wd)
-	if err != nil {
-		return model.Amount{}, model.Amount{},
-			fmt.Errorf("failed to convert withdrawals from pgtype.Numeric: %w", err)
-	}
 
-	return accruedAllTime, withdrawnAllTime, nil
+	return accrued, withdrawn, nil
+}
+
+type amountQuery func(context.Context, string) (pgtype.Numeric, error)
+
+func getAmount(ctx context.Context, amountQuery amountQuery, userID string) (model.Amount, error) {
+	val, err := amountQuery(ctx, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return model.Amount{}, err
+	}
+	if err == nil {
+		return model.FromPGNumeric(val) //nolint:wrapcheck // helper function
+	}
+	return model.NewAmount(0, 0), nil
 }

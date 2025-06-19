@@ -29,11 +29,23 @@ BEGIN TRANSACTION;
         amount DECIMAL(12, 2));
 
 ALTER TABLE user_hashes ADD CONSTRAINT unique_login UNIQUE(hash_login);
+ALTER TABLE user_hashes ADD CONSTRAINT check_hash_login_not_empty
+CHECK (length(trim(hash_login)) > 0);
+
 ALTER TABLE password_hashes ADD CONSTRAINT unique_hash UNIQUE(hash_password);
+ALTER TABLE password_hashes ADD CONSTRAINT check_hash_password_not_empty
+CHECK (length(trim(hash_password)) > 0);
+
 ALTER TABLE statuses ADD CONSTRAINT unique_name_status UNIQUE (name_status);
+
 ALTER TABLE accrued_orders ADD CONSTRAINT unique_accrual_no UNIQUE (name_order);
+ALTER TABLE accrued_orders ADD CONSTRAINT check_name_order_not_empty
+    CHECK (length(trim(name_order)) > 0);
 ALTER TABLE accrued_orders ADD CONSTRAINT non_negative_bonus_amount CHECK (amount::numeric >= 0);
+
 ALTER TABLE withdrawn_orders ADD CONSTRAINT unique_withdrawn_no UNIQUE (name_order);
 ALTER TABLE withdrawn_orders ADD CONSTRAINT non_negative_bonus_amount CHECK (amount::numeric >= 0);
+ALTER TABLE withdrawn_orders ADD CONSTRAINT check_name_order_not_empty
+    CHECK (length(trim(name_order)) > 0);
 
 COMMIT;
