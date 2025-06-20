@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -59,4 +61,40 @@ func WithTX[T any](ctx context.Context,
 		return zero, fmt.Errorf("failed to convert any to %T", zero)
 	}
 	return r, nil
+}
+
+func WithRetry[T any](dbQuery func() (T, error), counter int) (T, error) {
+	res, err := dbQuery()
+	if err == nil {
+		return res, nil
+	}
+
+	var zero T
+	const maxAttemptCount = 3
+	if counter >= maxAttemptCount {
+		return zero, fmt.Errorf("failed to reattempt query to the DB: %w", err)
+	}
+	if isRetryableError(err) {
+		time.Sleep((time.Duration(counter*2 + 1)) * time.Second) // count: 0 1 2 -> seconds: 1 3 5
+		return WithRetry[T](dbQuery, counter+1)
+	}
+	return zero, fmt.Errorf("on attempt #%d error occured: %w", counter, err)
+}
+
+func isRetryableError(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case pgerrcode.ConnectionException,
+			pgerrcode.ConnectionDoesNotExist,
+			pgerrcode.ConnectionFailure,
+			pgerrcode.CannotConnectNow,
+			pgerrcode.SQLClientUnableToEstablishSQLConnection,
+			pgerrcode.SQLServerRejectedEstablishmentOfSQLConnection,
+			pgerrcode.TransactionResolutionUnknown:
+			return true
+		}
+	}
+
+	return false
 }

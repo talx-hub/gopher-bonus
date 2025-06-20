@@ -30,58 +30,66 @@ func NewOrderRepository(pool connectionPool, log *slog.Logger) *OrderRepository 
 }
 
 func (r *OrderRepository) CreateOrder(ctx context.Context, o *order.Order) error {
-	if o.Type == order.TypeAccrual {
-		queries := db.New(r.pool)
-		if err := queries.CreateAccrual(ctx, db.CreateAccrualParams{
-			IDUser:     o.UserID,
-			NameOrder:  o.ID,
-			UploadedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			NameStatus: string(o.Status),
-		}); err != nil {
-			return fmt.Errorf("failed to create order in DB: %w", err)
+	createOrderCb := func() (struct{}, error) {
+		if o.Type == order.TypeAccrual {
+			queries := db.New(r.pool)
+			if err := queries.CreateAccrual(ctx, db.CreateAccrualParams{
+				IDUser:     o.UserID,
+				NameOrder:  o.ID,
+				UploadedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+				NameStatus: string(o.Status),
+			}); err != nil {
+				return struct{}{}, fmt.Errorf("failed to create order in DB: %w", err)
+			}
+
+			return struct{}{}, nil
 		}
 
-		return nil
-	}
+		withdraw := func(_ context.Context, tx connectionPool) (any, error) {
+			accrued, withdrawn, err := r.getBalanceTX(ctx, tx, o.UserID)
+			if err != nil {
+				return struct{}{}, fmt.Errorf(
+					"failed to get balance for userID %s: %w", o.UserID, err)
+			}
+			if accrued.TotalKopecks() < o.Amount.TotalKopecks()+withdrawn.TotalKopecks() {
+				return struct{}{}, serviceerrs.ErrInsufficientFunds
+			}
 
-	withdraw := func(_ context.Context, tx connectionPool) (any, error) {
-		accrued, withdrawn, err := r.getBalanceTX(ctx, tx, o.UserID)
+			queries := db.New(tx)
+			if err := queries.CreateWithdrawal(ctx, db.CreateWithdrawalParams{
+				IDUser:      o.UserID,
+				NameOrder:   o.ID,
+				ProcessedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+				Amount:      o.Amount.ToPGNumeric(),
+			}); err != nil {
+				return struct{}{}, fmt.Errorf("failed to withdraw in DB: %w", err)
+			}
+			return struct{}{}, nil
+		}
+
+		_, err := WithTX[struct{}](ctx, r.pool, r.log, withdraw)
 		if err != nil {
-			return struct{}{}, fmt.Errorf(
-				"failed to get balance for userID %s: %w", o.UserID, err)
-		}
-		if accrued.TotalKopecks() < o.Amount.TotalKopecks()+withdrawn.TotalKopecks() {
-			return struct{}{}, serviceerrs.ErrInsufficientFunds
-		}
-
-		queries := db.New(tx)
-		if err := queries.CreateWithdrawal(ctx, db.CreateWithdrawalParams{
-			IDUser:      o.UserID,
-			NameOrder:   o.ID,
-			ProcessedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			Amount:      o.Amount.ToPGNumeric(),
-		}); err != nil {
-			return struct{}{}, fmt.Errorf("failed to withdraw in DB: %w", err)
+			return struct{}{}, err //nolint: wrapcheck // error from wrapped function
 		}
 		return struct{}{}, nil
 	}
 
-	_, err := WithTX[struct{}](ctx, r.pool, r.log, withdraw)
-	if err != nil {
-		return err //nolint: wrapcheck // error from wrapped function
-	}
-	return nil
+	_, err := WithRetry[struct{}](createOrderCb, 0)
+	return err
 }
 
 func (r *OrderRepository) FindUserIDByAccrualID(ctx context.Context, accrualID string,
 ) (string, error) {
-	queries := db.New(r.pool)
-	userID, err := queries.FindOrderByID(ctx, accrualID)
-	if err != nil {
-		return "",
-			fmt.Errorf("failed to find userID by orderID %s: %w", accrualID, err)
+	findLogic := func() (string, error) {
+		queries := db.New(r.pool)
+		userID, err := queries.FindOrderByID(ctx, accrualID)
+		if err != nil {
+			return "", fmt.Errorf("failed to find userID by orderID %s: %w", accrualID, err)
+		}
+		return userID, nil
 	}
-	return userID, nil
+
+	return WithRetry[string](findLogic, 0) //nolint: wrapcheck // error from wrapped function
 }
 
 func (r *OrderRepository) ListOrdersByUser(ctx context.Context,
@@ -90,10 +98,15 @@ func (r *OrderRepository) ListOrdersByUser(ctx context.Context,
 	if len(userID) == 0 {
 		return nil, errors.New("failed to list orders for empty user: userID must be not empty")
 	}
-	if tp == order.TypeAccrual {
-		return listAccruals(ctx, userID, r.pool, r.log)
+
+	listLogic := func() ([]order.Order, error) {
+		if tp == order.TypeAccrual {
+			return listAccruals(ctx, userID, r.pool, r.log)
+		}
+		return listWithdrawals(ctx, userID, r.pool, r.log)
 	}
-	return listWithdrawals(ctx, userID, r.pool, r.log)
+
+	return WithRetry[[]order.Order](listLogic, 0) //nolint: wrapcheck // error from wrapped function
 }
 
 func listAccruals(ctx context.Context,
@@ -162,19 +175,24 @@ func listWithdrawals(ctx context.Context,
 }
 
 func (r *OrderRepository) UpdateAccrualStatus(ctx context.Context, o *order.Order) error {
-	queries := db.New(r.pool)
-	res, err := queries.UpdateAccrualStatus(
-		ctx,
-		db.UpdateAccrualStatusParams{
-			NameStatus: string(o.Status),
-			NameOrder:  o.ID,
-		},
-	)
-	if err != nil || res.RowsAffected() == 0 {
-		return fmt.Errorf("failed to update status->(%s) for order %s: %w",
-			string(o.Status), o.ID, err)
+	updateFn := func() (struct{}, error) {
+		queries := db.New(r.pool)
+		res, err := queries.UpdateAccrualStatus(
+			ctx,
+			db.UpdateAccrualStatusParams{
+				NameStatus: string(o.Status),
+				NameOrder:  o.ID,
+			},
+		)
+		if err != nil || res.RowsAffected() == 0 {
+			return struct{}{}, fmt.Errorf("failed to update status->(%s) for order %s: %w",
+				string(o.Status), o.ID, err)
+		}
+		return struct{}{}, nil
 	}
-	return nil
+
+	_, err := WithRetry[struct{}](updateFn, 0)
+	return err //nolint: wrapcheck // error from wrapped function
 }
 
 func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
@@ -186,8 +204,7 @@ func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
 	getBalance := func(ctx context.Context, tx connectionPool) (any, error) {
 		accrued, withdrawn, err := r.getBalanceTX(ctx, tx, userID)
 		if err != nil {
-			return Balance{},
-				fmt.Errorf("failed to get balance for user %s: %w", userID, err)
+			return Balance{}, fmt.Errorf("failed to get balance for user %s: %w", userID, err)
 		}
 		return Balance{
 			accrued:   accrued,
@@ -195,11 +212,14 @@ func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
 		}, nil
 	}
 
-	balance, err := WithTX[Balance](ctx, r.pool, r.log, getBalance)
+	runWithTX := func() (Balance, error) {
+		return WithTX[Balance](ctx, r.pool, r.log, getBalance)
+	}
+
+	balance, err := WithRetry[Balance](runWithTX, 0)
 	if err != nil {
 		return model.Amount{}, model.Amount{}, err //nolint: wrapcheck // error from wrapped function
 	}
-
 	return balance.accrued, balance.withdrawn, nil
 }
 
