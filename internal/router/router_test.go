@@ -13,7 +13,7 @@ type stubHandler struct {
 	name string
 }
 
-func (s stubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s stubHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("X-Handler", s.name)
 	w.WriteHeader(http.StatusTeapot)
 }

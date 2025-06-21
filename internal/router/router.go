@@ -34,9 +34,6 @@ type AuthHandler interface {
 type OrdersHandler interface {
 	PostOrder(w http.ResponseWriter, r *http.Request)
 	GetOrders(w http.ResponseWriter, r *http.Request)
-}
-
-type BalanceHandler interface {
 	Withdraw(w http.ResponseWriter, r *http.Request)
 	GetBalance(w http.ResponseWriter, r *http.Request)
 	GetWithdrawals(w http.ResponseWriter, r *http.Request)
@@ -49,7 +46,6 @@ type HealthHandler interface {
 type Handler interface {
 	AuthHandler
 	OrdersHandler
-	BalanceHandler
 	HealthHandler
 }
 

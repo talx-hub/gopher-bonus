@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/talx-hub/gopher-bonus/internal/api/dto"
+	"github.com/talx-hub/gopher-bonus/internal/dbmanager"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
@@ -74,7 +75,9 @@ type OrderHandler struct {
 	userRepo  UserRepository
 }
 
-type GeneralHandler struct{}
+type GeneralHandler struct {
+	db *dbmanager.DBManager
+}
 
 const failedReadBodyMsg = "failed to read the request body"
 const failedCloseBodyMsg = "failed to close the request body"
@@ -353,8 +356,8 @@ func (h *OrderHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	if err = json.NewEncoder(w).Encode(
 		dto.BalanceResponse{
-			Current:   currentSum.ToFloat64(),
-			Withdrawn: withdrawals.ToFloat64(),
+			Current:   json.Number(currentSum.String()),
+			Withdrawn: json.Number(withdrawals.String()),
 		}); err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
@@ -399,7 +402,7 @@ func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	amount, err := model.FromFloat(request.Sum)
+	amount, err := model.FromString(request.Sum.String())
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
@@ -427,7 +430,7 @@ func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 			slog.LevelError,
 			"insufficient funds",
 			slog.String("order", request.OrderID),
-			slog.Float64("requested", request.Sum),
+			slog.String("requested", request.Sum.String()),
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, err.Error(), http.StatusPaymentRequired)
@@ -437,7 +440,7 @@ func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		slog.LevelError,
 		"unexpected withdrawal error",
 		slog.String("order", request.OrderID),
-		slog.Float64("requested", request.Sum),
+		slog.String("requested", request.Sum.String()),
 		slog.Any(model.KeyLoggerError, err),
 	)
 	http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
@@ -495,4 +498,10 @@ func (h *OrderHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *GeneralHandler) Ping(w http.ResponseWriter, r *http.Request) {}
+func (h *GeneralHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	h.db.Ping(r.Context())
+	if err := h.db.Error(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
