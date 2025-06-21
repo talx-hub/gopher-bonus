@@ -248,7 +248,7 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	foundUserID, err := h.orderRepo.FindUserIDByAccrualID(r.Context(), orderID)
 	if err != nil && errors.Is(err, serviceerrs.ErrNotFound) {
 		err = h.orderRepo.CreateOrder(r.Context(), &order.Order{
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().UTC(),
 			ID:        orderID,
 			UserID:    userID,
 			Status:    order.StatusNew,
@@ -410,7 +410,7 @@ func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		&order.Order{
 			ID:        request.OrderID,
 			UserID:    userID,
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().UTC(),
 			Type:      order.TypeWithdrawal,
 			Amount:    amount,
 		},

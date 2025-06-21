@@ -36,7 +36,7 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, o *order.Order) error
 			if err := queries.CreateAccrual(ctx, db.CreateAccrualParams{
 				IDUser:     o.UserID,
 				NameOrder:  o.ID,
-				UploadedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+				UploadedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
 				NameStatus: string(o.Status),
 			}); err != nil {
 				return struct{}{}, fmt.Errorf("failed to create order in DB: %w", err)
@@ -59,7 +59,7 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, o *order.Order) error
 			if err := queries.CreateWithdrawal(ctx, db.CreateWithdrawalParams{
 				IDUser:      o.UserID,
 				NameOrder:   o.ID,
-				ProcessedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+				ProcessedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
 				Amount:      o.Amount.ToPGNumeric(),
 			}); err != nil {
 				return struct{}{}, fmt.Errorf("failed to withdraw in DB: %w", err)

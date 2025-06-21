@@ -21,7 +21,7 @@ func buildJWTString(id string, secret []byte) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		Claims{
 			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpire)),
+				ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(TokenExpire)),
 			},
 			UserID: id,
 		},
@@ -57,7 +57,7 @@ func CheckToken(tokenString string, secret []byte) (Claims, error) {
 	if err != nil {
 		return Claims{}, fmt.Errorf("failed to parse token %w", err)
 	}
-	tokenExpired := claims.ExpiresAt.Before(time.Now())
+	tokenExpired := claims.ExpiresAt.Before(time.Now().UTC())
 	if tokenExpired {
 		return Claims{}, serviceerrs.ErrTokenExpired
 	}
