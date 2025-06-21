@@ -44,7 +44,6 @@ linters:
     - musttag
     - nilerr
     - nilnil
-    - nolintlint
     - nosprintfhostport
     - perfsprint
     - prealloc
@@ -144,7 +143,6 @@ linters:
         - uncheckedInlineErr
         - unlabelStmt
         - weakCond
-        - whyNoLint
         - yodaStyleExpr
     godot:
       scope: toplevel

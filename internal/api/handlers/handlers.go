@@ -76,13 +76,16 @@ type OrderHandler struct {
 
 type GeneralHandler struct{}
 
+const failedReadBodyMsg = "failed to read the request body"
+const failedCloseBodyMsg = "failed to close the request body"
+
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	data := dto.UserRequest{}
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to read the request body",
+			failedReadBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -92,7 +95,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to close request body",
+			failedCloseBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 	}
@@ -139,7 +142,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to read the request body",
+			failedReadBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -149,7 +152,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to close request body",
+			failedCloseBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 	}
@@ -211,7 +214,7 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to read the request body",
+			failedReadBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -221,7 +224,7 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to close request body",
+			failedCloseBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 	}
@@ -382,7 +385,7 @@ func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	if err = json.NewDecoder(r.Body).Decode(&request); err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to read the request body",
+			failedReadBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -391,7 +394,7 @@ func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	if err = r.Body.Close(); err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
-			"failed to close request body",
+			failedCloseBodyMsg,
 			slog.Any(model.KeyLoggerError, err),
 		)
 	}
