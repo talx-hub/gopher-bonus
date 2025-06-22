@@ -953,5 +953,117 @@ func TestOrderHandler_Withdraw(t *testing.T) {
 }
 
 func TestOrderHandler_GetWithdrawals(t *testing.T) {
+	time1, err := time.Parse(time.RFC3339, "2025-06-21T11:58:45+03:00")
+	require.NoError(t, err)
+	time2, err := time.Parse(time.RFC3339, "2025-06-25T00:00:00Z")
+	require.NoError(t, err)
+	tests := []struct {
+		name         string
+		userID       string
+		wantCode     int
+		wantResponse string
+	}{
+		{
+			name:     "success withdrawals list",
+			userID:   "user-1",
+			wantCode: http.StatusOK,
+			wantResponse: `[
+{"order":"w1","sum":"300.00","processed_at":"2025-06-21T11:58:45+03:00"}
+{"order":"w2","sum":"1","processed_at":"2025-06-25T03:00:00+03:00"}
+]`,
+		},
+		{
+			name:     "no withdrawals",
+			userID:   "no withdrawals",
+			wantCode: http.StatusNoContent,
+		},
+		{
+			name:     "not found in repository",
+			userID:   "not found in repository",
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:     "unexpected repo error",
+			userID:   "unexpected repo error",
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:     "missing user in context",
+			userID:   "dont-put-to-ctx",
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:     "repo findByID error",
+			userID:   "user-6",
+			wantCode: http.StatusInternalServerError,
+		},
+	}
 
+	userRepo := mocks.NewMockUserRepository(t)
+	userRepo.EXPECT().
+		FindByID(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, id string) (user.User, error) {
+			if id == "user-6" {
+				return user.User{}, serviceerrs.ErrNotFound
+			}
+			return user.User{ID: id}, nil
+		})
+
+	orderRepo := mocks.NewMockOrderRepository(t)
+	orderRepo.EXPECT().
+		ListOrdersByUser(mock.Anything, mock.Anything, order.TypeWithdrawal).
+		RunAndReturn(func(_ context.Context, userID string, _ order.Type) ([]order.Order, error) {
+			if userID == "no withdrawals" {
+				return []order.Order{}, nil
+			}
+			if userID == "not found in repository" {
+				return nil, serviceerrs.ErrNotFound
+			}
+			if userID == "unexpected repo error" {
+				return nil, serviceerrs.ErrUnexpected
+			}
+
+			return []order.Order{
+				{
+					ID:        "w1",
+					UserID:    "user-1",
+					Type:      order.TypeWithdrawal,
+					Amount:    model.NewAmount(300, 0),
+					CreatedAt: time1,
+				},
+				{
+					ID:        "w2",
+					UserID:    "user-1",
+					Type:      order.TypeWithdrawal,
+					Amount:    model.NewAmount(0, 100),
+					CreatedAt: time2,
+				},
+			}, nil
+		})
+
+	h := OrderHandler{
+		userRetriever: userRetriever{},
+		logger:        slog.Default(),
+		orderRepo:     orderRepo,
+		userRepo:      userRepo,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", http.NoBody)
+			req.Header.Set("Content-Type", "application/json")
+
+			if tt.userID != "dont-put-to-ctx" {
+				userIDCtx := context.WithValue(req.Context(), model.KeyContextUserID, tt.userID)
+				req = req.WithContext(userIDCtx)
+			}
+
+			rr := httptest.NewRecorder()
+			h.GetWithdrawals(rr, req)
+			res := rr.Result()
+
+			assert.Equal(t, tt.wantCode, res.StatusCode)
+		})
+	}
+	orderRepo.AssertNumberOfCalls(t, "ListOrdersByUser", 4)
 }
