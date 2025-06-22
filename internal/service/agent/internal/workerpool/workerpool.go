@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 )

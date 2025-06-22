@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/talx-hub/gopher-bonus/internal/dbmanager"
 	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/service/dbmanager"
 	"github.com/talx-hub/gopher-bonus/internal/utils/pgcontainer"
 )
 

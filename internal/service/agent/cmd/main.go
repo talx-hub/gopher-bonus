@@ -7,9 +7,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/talx-hub/gopher-bonus/internal/agent"
-	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/service/agent"
+	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/talx-hub/gopher-bonus/internal/config"
+	"github.com/talx-hub/gopher-bonus/internal/service/config"
 )
 
 type CustomRouter struct {

@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
-	"github.com/talx-hub/gopher-bonus/internal/agent/internal/workerpool/mocks"
 	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
+	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/workerpool/mocks"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 

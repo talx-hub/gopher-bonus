@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/talx-hub/gopher-bonus/internal/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/model"
+	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 

@@ -17,10 +17,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/talx-hub/gopher-bonus/internal/api/dto"
-	"github.com/talx-hub/gopher-bonus/internal/dbmanager"
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/model/user"
+	"github.com/talx-hub/gopher-bonus/internal/service/dbmanager"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 	"github.com/talx-hub/gopher-bonus/internal/utils/auth"
 )
