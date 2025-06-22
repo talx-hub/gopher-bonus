@@ -830,7 +830,126 @@ func TestOrderHandler_GetBalance(t *testing.T) {
 }
 
 func TestOrderHandler_Withdraw(t *testing.T) {
+	tests := []struct {
+		name               string
+		userID             string
+		body               string
+		mockRetrieveUserID func() (user.User, error)
+		wantCode           int
+	}{
+		{
+			name:   "success withdrawal",
+			userID: "user-1",
+			body:   `{"order": "success withdrawal", "sum": 751.15}`,
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-1"}, nil
+			},
+			wantCode: http.StatusOK,
+		},
+		{
+			name:   "bad json",
+			userID: "user-2",
+			body:   `{"order": "2377225624", "sum":}`,
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-2"}, nil
+			},
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:   "invalid amount format",
+			userID: "user-3",
+			body:   `{"order": "2377225624", "sum": "not-a-number"}`,
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-3"}, nil
+			},
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:   "insufficient funds",
+			userID: "user-4",
+			body:   `{"order": "insufficient funds", "sum": 751.15}`,
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-4"}, nil
+			},
+			wantCode: http.StatusPaymentRequired,
+		},
+		{
+			name:   "unexpected repo error",
+			userID: "user-5",
+			body:   `{"order": "unexpected repo error", "sum": 751.15}`,
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-5"}, nil
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:   "retrieve user error",
+			userID: "user-6",
+			body:   `{"order": "2377225624", "sum": 751.15}`,
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{}, serviceerrs.ErrNotFound
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:               "missing user in context",
+			userID:             "dont-put-to-ctx",
+			body:               `{"order": "2377225624", "sum": 751.15}`,
+			mockRetrieveUserID: nil,
+			wantCode:           http.StatusInternalServerError,
+		},
+	}
 
+	userRepo := mocks.NewMockUserRepository(t)
+	orderRepo := mocks.NewMockOrderRepository(t)
+	orderRepo.EXPECT().
+		CreateOrder(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, o *order.Order) error {
+			if o.ID == "insufficient funds" {
+				return serviceerrs.ErrInsufficientFunds
+			}
+			if o.ID == "unexpected repo error" {
+				return serviceerrs.ErrUnexpected
+			}
+			return nil
+		})
+
+	h := OrderHandler{
+		userRetriever: userRetriever{},
+		logger:        slog.Default(),
+		orderRepo:     orderRepo,
+		userRepo:      userRepo,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.mockRetrieveUserID != nil {
+				u, err := tt.mockRetrieveUserID()
+				userRepo.EXPECT().
+					FindByID(mock.Anything, tt.userID).
+					Return(u, err)
+			} else {
+				userRepo.EXPECT().
+					FindByID(mock.Anything, mock.Anything).
+					Times(0)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+
+			if tt.userID != "dont-put-to-ctx" {
+				userIDCtx := context.WithValue(req.Context(), model.KeyContextUserID, tt.userID)
+				req = req.WithContext(userIDCtx)
+			}
+
+			rr := httptest.NewRecorder()
+			h.Withdraw(rr, req)
+			res := rr.Result()
+
+			assert.Equal(t, tt.wantCode, res.StatusCode)
+		})
+	}
+	orderRepo.AssertNumberOfCalls(t, "CreateOrder", 3)
 }
 
 func TestOrderHandler_GetWithdrawals(t *testing.T) {
