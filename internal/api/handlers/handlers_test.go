@@ -2,12 +2,16 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -51,6 +55,27 @@ func testAuthHandlers(t *testing.T,
 
 	assert.Equal(t, wantToken, hasToken)
 	assert.Equal(t, wantCode, rr.Code)
+}
+
+type ResponseFixture struct {
+	TestcaseName string          `json:"name"`
+	Responses    json.RawMessage `json:"responses"`
+}
+
+func loadResponseFixtures(t *testing.T, file string) map[string]string {
+	t.Helper()
+
+	data, err := os.ReadFile(file)
+	require.NoError(t, err)
+
+	var temp []ResponseFixture
+	require.NoError(t, json.Unmarshal(data, &temp))
+
+	fixtures := make(map[string]string)
+	for _, f := range temp {
+		fixtures[f.TestcaseName] = string(f.Responses)
+	}
+	return fixtures
 }
 
 func TestAuthHandler_Register(t *testing.T) {
@@ -491,7 +516,195 @@ func TestOrderHandler_PostOrder(t *testing.T) {
 }
 
 func TestOrderHandler_GetOrders(t *testing.T) {
+	time1, err := time.Parse(time.RFC3339, "1999-01-01T00:00:00Z")
+	require.NoError(t, err)
+	time2, err := time.Parse(time.RFC3339, "2025-06-21T11:58:45+03:00")
+	require.NoError(t, err)
+	time3, err := time.Parse(time.RFC3339, "2025-06-25T00:00:00Z")
+	require.NoError(t, err)
+	time4, err := time.Parse(time.RFC3339, "2025-06-26T03:00:00Z")
+	require.NoError(t, err)
 
+	wantResponses := loadResponseFixtures(t, "testdata/get_orders_response.json")
+
+	tests := []struct {
+		name                 string
+		userID               string
+		mockRetrieveUserID   func() (user.User, error)
+		mockListOrdersByUser func() ([]order.Order, error)
+		wantCode             int
+		resp                 string
+	}{
+		{
+			name:   "successful get orders",
+			userID: "user-1",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-1"}, nil
+			},
+			mockListOrdersByUser: func() ([]order.Order, error) {
+				return []order.Order{
+					{
+						ID:        "1",
+						UserID:    "user-1",
+						Type:      order.TypeAccrual,
+						Status:    order.StatusProcessed,
+						Amount:    model.NewAmount(100, 500),
+						CreatedAt: time1,
+					},
+					{
+						ID:        "2",
+						UserID:    "user-1",
+						Type:      order.TypeAccrual,
+						Status:    order.StatusProcessed,
+						Amount:    model.NewAmount(100, 5),
+						CreatedAt: time2,
+					},
+					{
+						ID:        "3",
+						UserID:    "user-1",
+						Type:      order.TypeAccrual,
+						Status:    order.StatusProcessed,
+						Amount:    model.NewAmount(100, 51),
+						CreatedAt: time3,
+					},
+					{
+						ID:        "4",
+						UserID:    "user-1",
+						Type:      order.TypeAccrual,
+						Status:    order.StatusProcessed,
+						Amount:    model.NewAmount(100, 99),
+						CreatedAt: time4,
+					},
+					{
+						ID:        "5",
+						UserID:    "user-1",
+						Type:      order.TypeAccrual,
+						Status:    order.StatusProcessed,
+						Amount:    model.NewAmount(100, 1),
+						CreatedAt: time1,
+					},
+					{
+						ID:        "6",
+						UserID:    "user-1",
+						Type:      order.TypeAccrual,
+						Status:    order.StatusProcessed,
+						Amount:    model.NewAmount(100, 100),
+						CreatedAt: time2,
+					},
+					{ID: "7", UserID: "user-1", Type: order.TypeAccrual, Status: order.StatusProcessing, CreatedAt: time3},
+					{ID: "8", UserID: "user-1", Type: order.TypeAccrual, Status: order.StatusNew, CreatedAt: time4},
+					{ID: "9", UserID: "user-1", Type: order.TypeAccrual, Status: order.StatusInvalid, CreatedAt: time1},
+				}, nil
+			},
+			wantCode: http.StatusOK,
+			resp:     wantResponses["successful get orders"],
+		},
+		{
+			name:   "user without orders",
+			userID: "user-2",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-2"}, nil
+			},
+			mockListOrdersByUser: func() ([]order.Order, error) {
+				return []order.Order{}, nil
+			},
+			wantCode: http.StatusNoContent,
+		},
+		{
+			name:   "failListOrdersByUser",
+			userID: "user-3",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-3"}, nil
+			},
+			mockListOrdersByUser: func() ([]order.Order, error) {
+				return nil, serviceerrs.ErrUnexpected
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:   "fail encoding to JSON: empty type",
+			userID: "user-4",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-4"}, nil
+			},
+			mockListOrdersByUser: func() ([]order.Order, error) {
+				return []order.Order{
+					{ID: "unknown type", UserID: "user-4", Type: "unknown"},
+					{ID: "valid", UserID: "user-4", Type: order.TypeAccrual, Status: order.StatusNew},
+				}, nil
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:   "unknown user",
+			userID: "unknown",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{}, serviceerrs.ErrNotFound
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:     "middleware failure: no user in ctx",
+			userID:   "dont-put-to-ctx",
+			wantCode: http.StatusInternalServerError,
+		},
+	}
+
+	userRepo := mocks.NewMockUserRepository(t)
+	orderRepo := mocks.NewMockOrderRepository(t)
+
+	h := OrderHandler{
+		userRetriever: userRetriever{},
+		logger:        slog.Default(),
+		orderRepo:     orderRepo,
+		userRepo:      userRepo,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.mockRetrieveUserID != nil {
+				u, err := tt.mockRetrieveUserID()
+				userRepo.EXPECT().
+					FindByID(mock.Anything, tt.userID).
+					Return(u, err)
+			} else {
+				userRepo.EXPECT().
+					FindByID(mock.Anything, mock.Anything).
+					Times(0)
+			}
+
+			if tt.mockListOrdersByUser != nil {
+				orders, err := tt.mockListOrdersByUser()
+				orderRepo.EXPECT().
+					ListOrdersByUser(mock.Anything, tt.userID, order.TypeAccrual).
+					Return(orders, err)
+			} else {
+				orderRepo.EXPECT().
+					ListOrdersByUser(mock.Anything, mock.Anything, mock.Anything).
+					Times(0)
+			}
+
+			req := httptest.NewRequest(
+				http.MethodGet, "/orders", http.NoBody)
+			if tt.userID != "dont-put-to-ctx" {
+				userIDCtx := context.WithValue(
+					req.Context(), model.KeyContextUserID, tt.userID)
+				req = req.WithContext(userIDCtx)
+			}
+			rr := httptest.NewRecorder()
+			h.GetOrders(rr, req)
+			res := rr.Result()
+
+			assert.Equal(t, tt.wantCode, res.StatusCode)
+			if tt.wantCode == http.StatusOK {
+				body, err := io.ReadAll(res.Body)
+				require.NoError(t, err)
+				err = res.Body.Close()
+				require.NoError(t, err)
+				assert.JSONEq(t, tt.resp, string(body))
+			}
+		})
+	}
 }
 
 func TestOrderHandler_GetBalance(t *testing.T) {
