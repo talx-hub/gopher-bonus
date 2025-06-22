@@ -708,7 +708,125 @@ func TestOrderHandler_GetOrders(t *testing.T) {
 }
 
 func TestOrderHandler_GetBalance(t *testing.T) {
+	tests := []struct {
+		name               string
+		userID             string
+		mockRetrieveUserID func() (user.User, error)
+		mockGetBalance     func() (model.Amount, model.Amount, error)
+		wantCode           int
+		resp               string
+	}{
+		{
+			name:   "successful get balance #1",
+			userID: "user-1",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-1"}, nil
+			},
+			mockGetBalance: func() (model.Amount, model.Amount, error) {
+				return model.NewAmount(0, 50050),
+					model.NewAmount(0, 4200),
+					nil
+			},
+			wantCode: http.StatusOK,
+			resp:     `{"current": 500.5,"withdrawn": 42}`,
+		},
+		{
+			name:   "successful get balance #2",
+			userID: "user-2",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-2"}, nil
+			},
+			mockGetBalance: func() (model.Amount, model.Amount, error) {
+				return model.NewAmount(0, 0),
+					model.NewAmount(0, 1),
+					nil
+			},
+			wantCode: http.StatusOK,
+			resp:     `{"current": 0.0,"withdrawn": 0.01}`,
+		},
+		{
+			name:   "fail to get balance",
+			userID: "user-3",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{ID: "user-2"}, nil
+			},
+			mockGetBalance: func() (model.Amount, model.Amount, error) {
+				return model.NewAmount(0, 0),
+					model.NewAmount(0, 0),
+					serviceerrs.ErrUnexpected
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:   "unknown user",
+			userID: "unknown",
+			mockRetrieveUserID: func() (user.User, error) {
+				return user.User{}, serviceerrs.ErrNotFound
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name:     "middleware failure: no user in ctx",
+			userID:   "dont-put-to-ctx",
+			wantCode: http.StatusInternalServerError,
+		},
+	}
 
+	userRepo := mocks.NewMockUserRepository(t)
+	orderRepo := mocks.NewMockOrderRepository(t)
+
+	h := OrderHandler{
+		userRetriever: userRetriever{},
+		logger:        slog.Default(),
+		orderRepo:     orderRepo,
+		userRepo:      userRepo,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.mockRetrieveUserID != nil {
+				u, err := tt.mockRetrieveUserID()
+				userRepo.EXPECT().
+					FindByID(mock.Anything, tt.userID).
+					Return(u, err)
+			} else {
+				userRepo.EXPECT().
+					FindByID(mock.Anything, mock.Anything).
+					Times(0)
+			}
+
+			if tt.mockGetBalance != nil {
+				currentSum, withdrawals, err := tt.mockGetBalance()
+				orderRepo.EXPECT().
+					GetBalance(mock.Anything, tt.userID).
+					Return(currentSum, withdrawals, err)
+			} else {
+				orderRepo.EXPECT().
+					GetBalance(mock.Anything, mock.Anything).
+					Times(0)
+			}
+
+			req := httptest.NewRequest(
+				http.MethodGet, "/orders", http.NoBody)
+			if tt.userID != "dont-put-to-ctx" {
+				userIDCtx := context.WithValue(
+					req.Context(), model.KeyContextUserID, tt.userID)
+				req = req.WithContext(userIDCtx)
+			}
+			rr := httptest.NewRecorder()
+			h.GetBalance(rr, req)
+			res := rr.Result()
+
+			assert.Equal(t, tt.wantCode, res.StatusCode)
+			if tt.wantCode == http.StatusOK {
+				body, err := io.ReadAll(res.Body)
+				require.NoError(t, err)
+				err = res.Body.Close()
+				require.NoError(t, err)
+				assert.JSONEq(t, tt.resp, string(body))
+			}
+		})
+	}
 }
 
 func TestOrderHandler_Withdraw(t *testing.T) {
