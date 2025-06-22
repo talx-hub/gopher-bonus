@@ -432,49 +432,49 @@ func TestOrderRepository_GetBalance(t *testing.T) {
 	tests := []struct {
 		name         string
 		userID       string
-		wantAccrued  model.Amount
+		wantSum      model.Amount
 		wantWithdraw model.Amount
 		wantErr      bool
 	}{
 		{
 			name:         "no accruals and no withdrawals",
 			userID:       "2",
-			wantAccrued:  model.NewAmount(0, 0),
+			wantSum:      model.NewAmount(0, 0),
 			wantWithdraw: model.NewAmount(0, 0),
 			wantErr:      false,
 		},
 		{
 			name:         "accruals > 0, no withdrawals",
 			userID:       "1",
-			wantAccrued:  model.NewAmount(150, 50),
+			wantSum:      model.NewAmount(150, 50),
 			wantWithdraw: model.NewAmount(0, 0),
 			wantErr:      false,
 		},
 		{
 			name:         "equal accruals and withdrawals",
 			userID:       "3",
-			wantAccrued:  model.NewAmount(100, 0),
+			wantSum:      model.NewAmount(0, 0),
 			wantWithdraw: model.NewAmount(100, 0),
 			wantErr:      false,
 		},
 		{
 			name:         "more withdrawn than accrued",
 			userID:       "4",
-			wantAccrued:  model.NewAmount(50, 0),
+			wantSum:      model.NewAmount(-20, 0),
 			wantWithdraw: model.NewAmount(70, 0),
 			wantErr:      false,
 		},
 		{
 			name:         "has both accruals and withdrawals",
 			userID:       "5",
-			wantAccrued:  model.NewAmount(300, 0),
+			wantSum:      model.NewAmount(199, 50),
 			wantWithdraw: model.NewAmount(100, 50),
 			wantErr:      false,
 		},
 		{
 			name:         "user does not exist",
 			userID:       "100500",
-			wantAccrued:  model.NewAmount(0, 0),
+			wantSum:      model.NewAmount(0, 0),
 			wantWithdraw: model.NewAmount(0, 0),
 			wantErr:      false, // нет записей — не ошибка
 		},
@@ -487,7 +487,7 @@ func TestOrderRepository_GetBalance(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.wantAccrued, accrued)
+				assert.Equal(t, tt.wantSum, accrued)
 				assert.Equal(t, tt.wantWithdraw, withdrawn)
 			}
 		})

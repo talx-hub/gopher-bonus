@@ -220,7 +220,12 @@ func (r *OrderRepository) GetBalance(ctx context.Context, userID string,
 	if err != nil {
 		return model.Amount{}, model.Amount{}, err //nolint: wrapcheck // error from wrapped function
 	}
-	return balance.accrued, balance.withdrawn, nil
+
+	currentSum := model.NewAmount(
+		0,
+		balance.accrued.TotalKopecks()-balance.withdrawn.TotalKopecks(),
+	)
+	return currentSum, balance.withdrawn, nil
 }
 
 func (r *OrderRepository) getBalanceTX(ctx context.Context,

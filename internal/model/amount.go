@@ -2,8 +2,10 @@ package model
 
 import (
 	"errors"
-	"math"
+	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -17,30 +19,52 @@ type Amount struct {
 
 func NewAmount(roubles, kopeck int64) Amount {
 	return Amount{
-		roubles: roubles,
-		kopeck:  kopeck,
+		roubles: roubles + kopeck/kopInRub,
+		kopeck:  kopeck % kopInRub,
 	}
 }
 
-func (a *Amount) ToFloat64() float64 {
-	return float64(a.roubles) + float64(a.kopeck)/kopInRub
+func (a *Amount) String() string {
+	if a.kopeck == 0 {
+		return strconv.FormatInt(a.roubles, 10)
+	}
+	return fmt.Sprintf("%d.%02d", a.roubles, a.kopeck)
 }
 
-func FromFloat(amount float64) (Amount, error) {
-	if amount < 0 {
-		return Amount{}, errors.New("bonus amount must be positive")
+var ErrFromString = errors.New("failed to parse amount from string")
+
+func FromString(number string) (Amount, error) {
+	const errFmt = "%w: %s"
+	parts := strings.Split(number, ".")
+	l := len(parts)
+	if l == 0 || l > 2 {
+		return Amount{}, fmt.Errorf(errFmt, ErrFromString, number)
 	}
-	const maxPreciseInt = 9007199254740992
-	const kopInRub = 100
-	if amount*kopInRub >= maxPreciseInt {
-		return Amount{}, errors.New("amount overflow")
+	const roublesIdx = 0
+	rubs, err := strconv.ParseInt(parts[roublesIdx], 10, 64)
+	if err != nil {
+		return Amount{}, fmt.Errorf(errFmt, ErrFromString, number)
+	}
+	if len(parts) == 1 {
+		return NewAmount(rubs, 0), nil
+	}
+	const kopeckIdx = 1
+	const maxCorrectNumberOfDigits = 2
+	if len(parts[kopeckIdx]) > maxCorrectNumberOfDigits {
+		return Amount{}, fmt.Errorf("%w: %s -- incorrect precision", ErrFromString, number)
+	}
+	kops, err := strconv.ParseInt(parts[kopeckIdx], 10, 64)
+	if err != nil {
+		return Amount{}, fmt.Errorf(errFmt, ErrFromString, number)
 	}
 
-	totalKop := int64(math.Round(amount * kopInRub))
-	return Amount{
-		roubles: totalKop / kopInRub,
-		kopeck:  totalKop % kopInRub,
-	}, nil
+	const twoDigit = 2
+	if len(parts[kopeckIdx]) == twoDigit {
+		return NewAmount(rubs, kops), nil
+	}
+
+	const factor = 10 // "10.1" -> 10rub 10kop
+	return NewAmount(rubs, kops*factor), nil
 }
 
 func (a *Amount) ToPGNumeric() pgtype.Numeric {

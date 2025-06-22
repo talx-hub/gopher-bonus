@@ -1,274 +1,278 @@
 package model
 
 import (
+	"errors"
 	"math"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func floatEq(want, got float64) bool {
-	const eps = 0.0001
-	return math.Abs(want-got) < eps
-}
-
-func TestAmount_ToFloat64(t *testing.T) {
+func TestNewAmount(t *testing.T) {
 	type fields struct {
 		roubles int64
-		kopeck  int64
+		kopecks int64
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   float64
+		want   Amount
 	}{
 		{
 			"zero all",
-			fields{roubles: 0, kopeck: 0},
-			0.0,
+			fields{roubles: 0, kopecks: 0},
+			Amount{
+				roubles: 0,
+				kopeck:  0,
+			},
 		},
 		{
 			"zero roubles #1",
-			fields{roubles: 0, kopeck: 99},
-			0.99,
+			fields{roubles: 0, kopecks: 99},
+			Amount{
+				roubles: 0,
+				kopeck:  99,
+			},
 		},
 		{
 			"zero roubles #2",
-			fields{roubles: 0, kopeck: 100},
-			1.0,
+			fields{roubles: 0, kopecks: 100},
+			Amount{
+				roubles: 1,
+				kopeck:  0,
+			},
 		},
 		{
 			"zero roubles #3",
-			fields{roubles: 0, kopeck: 1000},
-			10.0,
+			fields{roubles: 0, kopecks: 1000},
+			Amount{
+				roubles: 10,
+				kopeck:  0,
+			},
 		},
 		{
 			"zero roubles #4",
-			fields{roubles: 0, kopeck: 123},
-			1.23,
+			fields{roubles: 0, kopecks: 123},
+			Amount{
+				roubles: 1,
+				kopeck:  23,
+			},
 		},
 		{
 			"zero roubles #5",
-			fields{roubles: 0, kopeck: 543},
-			5.43,
+			fields{roubles: 0, kopecks: 543},
+			Amount{
+				roubles: 5,
+				kopeck:  43,
+			},
 		},
 		{
 			"zero roubles #6",
-			fields{roubles: 0, kopeck: 2345},
-			23.45,
+			fields{roubles: 0, kopecks: 2345},
+			Amount{
+				roubles: 23,
+				kopeck:  45,
+			},
+		},
+		{
+			"zero roubles #7",
+			fields{roubles: 0, kopecks: 10},
+			Amount{
+				roubles: 0,
+				kopeck:  10,
+			},
 		},
 		{
 			"many kopecks #1",
-			fields{roubles: 1, kopeck: 2345},
-			24.45,
+			fields{roubles: 1, kopecks: 2345},
+			Amount{
+				roubles: 24,
+				kopeck:  45,
+			},
 		},
 		{
 			"many kopecks #2",
-			fields{roubles: 1234, kopeck: 2345},
-			1257.45,
+			fields{roubles: 1234, kopecks: 2345},
+			Amount{
+				roubles: 1257,
+				kopeck:  45,
+			},
 		},
 		{
 			"zero kopeck #1",
-			fields{roubles: 1, kopeck: 0},
-			1.0,
+			fields{roubles: 1, kopecks: 0},
+			Amount{
+				roubles: 1,
+				kopeck:  0,
+			},
 		},
 		{
 			"zero kopeck #2",
-			fields{roubles: 123, kopeck: 0},
-			123.0,
+			fields{roubles: 123, kopecks: 0},
+			Amount{
+				roubles: 123,
+				kopeck:  0,
+			},
 		},
 		{
 			"a lot of roubles",
-			fields{roubles: math.MaxInt64, kopeck: 0},
-			9223372036854775807.0,
+			fields{roubles: math.MaxInt64, kopecks: 0},
+			Amount{
+				roubles: math.MaxInt64,
+				kopeck:  0,
+			},
 		},
 		{
 			"a lot of kopecks",
-			fields{roubles: 0, kopeck: math.MaxInt64},
-			92233720368547758.07,
-		},
-		{
-			"a lot of all",
-			fields{roubles: math.MaxInt64, kopeck: math.MaxInt64},
-			9315605757223323565.07,
+			fields{roubles: 0, kopecks: math.MaxInt64},
+			Amount{
+				roubles: 92233720368547758,
+				kopeck:  7,
+			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &Amount{
-				roubles: tt.fields.roubles,
-				kopeck:  tt.fields.kopeck,
-			}
-			assert.True(t, floatEq(tt.want, a.ToFloat64()))
+			a := NewAmount(tt.fields.roubles, tt.fields.kopecks)
+			assert.Equal(t, tt.want, a)
 		})
 	}
 }
 
-func TestFromFloat(t *testing.T) {
+func TestAmount_String(t *testing.T) {
 	tests := []struct {
-		float   float64
-		want    Amount
-		wantErr bool
+		name     string
+		input    Amount
+		expected string
 	}{
 		{
-			1234.0,
-			Amount{1234, 0},
-			false,
+			name:     "without kopecks",
+			input:    Amount{roubles: 7, kopeck: 0},
+			expected: "7",
 		},
 		{
-			0,
-			Amount{0, 0},
-			false,
+			name:     "with one-digit kopecks",
+			input:    Amount{roubles: 10, kopeck: 5},
+			expected: "10.05",
 		},
 		{
-			0.12345,
-			Amount{0, 12},
-			false,
+			name:     "with two-digit kopecks",
+			input:    Amount{roubles: 1, kopeck: 42},
+			expected: "1.42",
 		},
 		{
-			0.129999,
-			Amount{0, 13},
-			false,
+			name:     "zero amount",
+			input:    Amount{roubles: 0, kopeck: 0},
+			expected: "0",
 		},
 		{
-			1234.164,
-			Amount{1234, 16},
-			false,
+			name:     "kopecks only",
+			input:    Amount{roubles: 0, kopeck: 99},
+			expected: "0.99",
 		},
 		{
-			1234.104,
-			Amount{1234, 10},
-			false,
+			name:     "round number with kopecks",
+			input:    Amount{roubles: 3, kopeck: 10},
+			expected: "3.10",
 		},
 		{
-			1234.105,
-			Amount{1234, 11},
-			false,
-		},
-		{
-			1234.165,
-			Amount{1234, 17},
-			false,
-		},
-		{
-			1234.175,
-			Amount{1234, 18},
-			false,
-		},
-		{
-			1234.115,
-			Amount{1234, 12},
-			false,
-		},
-		{
-			1234.101,
-			Amount{1234, 10},
-			false,
-		},
-		{
-			1234.111,
-			Amount{1234, 11},
-			false,
-		},
-		{
-			1234.167,
-			Amount{1234, 17},
-			false,
-		},
-		{
-			1234.157,
-			Amount{1234, 16},
-			false,
-		},
-		{
-			1234.141,
-			Amount{1234, 14},
-			false,
-		},
-		{
-			1234.151,
-			Amount{1234, 15},
-			false,
-		},
-		{
-			1234.145,
-			Amount{1234, 15},
-			false,
-		},
-		{
-			1234.144,
-			Amount{1234, 14},
-			false,
-		},
-		{
-			1234.14,
-			Amount{1234, 14},
-			false,
-		},
-		{
-			1234.15,
-			Amount{1234, 15},
-			false,
-		},
-		{
-			1234.990,
-			Amount{1234, 99},
-			false,
-		},
-		{
-			1234.991,
-			Amount{1234, 99},
-			false,
-		},
-		{
-			1234.100,
-			Amount{1234, 10},
-			false,
-		},
-		{
-			1234.101,
-			Amount{1234, 10},
-			false,
-		},
-		{
-			9007199254740992.01,
-			Amount{0, 0},
-			true,
-		},
-		{
-			-1234.0,
-			Amount{0, 0},
-			true,
-		},
-		{
-			-0.01,
-			Amount{0, 0},
-			true,
-		},
-		{
-			-0.1,
-			Amount{0, 0},
-			true,
-		},
-		{
-			-0.00001,
-			Amount{0, 0},
-			true,
+			name:     "large number",
+			input:    Amount{roubles: 123456789, kopeck: 1},
+			expected: "123456789.01",
 		},
 	}
-	for _, tt := range tests {
-		t.Run("", func(t *testing.T) {
-			got, err := FromFloat(tt.float)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromFloat() got = %v, want %v", got, tt.want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.input.String())
+		})
+	}
+}
+
+func TestFromString(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expected    Amount
+		expectError bool
+	}{
+		{
+			name:     "whole roubles only",
+			input:    "123",
+			expected: Amount{roubles: 123, kopeck: 0},
+		},
+		{
+			name:     "roubles and kopecks",
+			input:    "123.45",
+			expected: Amount{roubles: 123, kopeck: 45},
+		},
+		{
+			name:     "one-digit kopecks",
+			input:    "7.5",
+			expected: Amount{roubles: 7, kopeck: 50},
+		},
+		{
+			name:     "two-digit kopecks #2",
+			input:    "7.05",
+			expected: Amount{roubles: 7, kopeck: 5},
+		},
+		{
+			name:        "too many decimal places",
+			input:       "10.123",
+			expectError: true,
+		},
+		{
+			name:        "invalid roubles part",
+			input:       "abc.10",
+			expectError: true,
+		},
+		{
+			name:        "invalid kopecks part",
+			input:       "10.ab",
+			expectError: true,
+		},
+		{
+			name:        "empty string",
+			input:       "",
+			expectError: true,
+		},
+		{
+			name:        "multiple dots",
+			input:       "10.50.20",
+			expectError: true,
+		},
+		{
+			name:        "empty roubles",
+			input:       ".12",
+			expectError: true,
+		},
+		{
+			name:        "empty kopecks",
+			input:       "12.",
+			expectError: true,
+		},
+		{
+			name:     "zero amount #1",
+			input:    "0",
+			expected: Amount{roubles: 0, kopeck: 0},
+		},
+		{
+			name:     "zero amount #2",
+			input:    "0.0",
+			expected: Amount{roubles: 0, kopeck: 0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, err := FromString(tt.input)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, ErrFromString))
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, amount)
 			}
 		})
 	}
