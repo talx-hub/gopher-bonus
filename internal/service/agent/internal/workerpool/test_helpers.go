@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
+	"github.com/talx-hub/gopher-bonus/internal/service/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
@@ -116,7 +116,7 @@ func SetupWorkerPool(t *testing.T,
 	wg *sync.WaitGroup,
 	client AccrualClient,
 	sema AccrualSemaphore,
-	jobGenerator func() chan uint64,
+	jobGenerator func() chan string,
 ) (*WorkerPool, chan serviceerrs.TooManyRequestsError, chan struct{}, chan dto.AccrualInfo) {
 	t.Helper()
 

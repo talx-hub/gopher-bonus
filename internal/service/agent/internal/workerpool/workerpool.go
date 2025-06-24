@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
+	"github.com/talx-hub/gopher-bonus/internal/service/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 )
@@ -28,7 +27,7 @@ type WorkerPool struct {
 	Client         AccrualClient
 	Sema           AccrualSemaphore
 	WaitGroup      *sync.WaitGroup
-	Jobs           <-chan uint64
+	Jobs           <-chan string
 	RateDataCh     chan<- serviceerrs.TooManyRequestsError
 	RequestCounter chan<- struct{}
 	Results        chan<- dto.AccrualInfo
@@ -39,7 +38,7 @@ func New(
 	client AccrualClient,
 	sema AccrualSemaphore,
 	wg *sync.WaitGroup,
-	jobs <-chan uint64,
+	jobs <-chan string,
 	rateDataCh chan<- serviceerrs.TooManyRequestsError,
 	requestCounter chan<- struct{},
 	results chan<- dto.AccrualInfo,
@@ -105,7 +104,7 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 
 			data, err := pool.Client.GetOrderInfo(
 				ctx,
-				strconv.FormatUint(orderID, 10))
+				orderID)
 			pool.Sema.Release()
 			log.With("unit", "semaphore").
 				LogAttrs(ctx, slog.LevelDebug, "release")
@@ -135,9 +134,9 @@ func (pool *WorkerPool) worker(ctx context.Context, cancelAll context.CancelFunc
 	}
 }
 
-func (pool *WorkerPool) dummy(orderID uint64, status dto.AccrualStatus) dto.AccrualInfo {
+func (pool *WorkerPool) dummy(orderID string, status dto.AccrualStatus) dto.AccrualInfo {
 	return dto.AccrualInfo{
-		Order:  strconv.FormatUint(orderID, 10),
+		Order:  orderID,
 		Status: string(status),
 	}
 }

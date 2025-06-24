@@ -57,3 +57,7 @@ func (b *Builder) FromFlags() *Builder {
 	flag.Parse()
 	return b
 }
+
+func (b *Builder) GetConfig() *Config {
+	return b.cfg
+}

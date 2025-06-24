@@ -40,6 +40,14 @@ type AuthHandler struct {
 	secret string
 }
 
+func NewAuthHandler(userRepo UserRepository, log *slog.Logger, secret string) *AuthHandler {
+	return &AuthHandler{
+		logger: log,
+		repo:   userRepo,
+		secret: secret,
+	}
+}
+
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, o *order.Order) error
 	FindUserIDByAccrualID(ctx context.Context, accrualID string) (string, error)
@@ -49,6 +57,34 @@ type OrderRepository interface {
 }
 
 type userRetriever struct{}
+
+type OrderHandler struct {
+	userRetriever
+	logger    *slog.Logger
+	orderRepo OrderRepository
+	userRepo  UserRepository
+}
+
+func NewOrderHandler(
+	userRepo UserRepository, orderRepo OrderRepository, log *slog.Logger,
+) *OrderHandler {
+	return &OrderHandler{
+		logger:    log,
+		orderRepo: orderRepo,
+		userRepo:  userRepo,
+	}
+}
+
+type HealthHandler struct {
+	db *dbmanager.DBManager
+}
+
+func NewHealthHandler(db *dbmanager.DBManager) *HealthHandler {
+	return &HealthHandler{db: db}
+}
+
+const failedReadBodyMsg = "failed to read the request body"
+const failedCloseBodyMsg = "failed to close the request body"
 
 func (r *userRetriever) retrieveUserID(ctx context.Context, userRepo UserRepository,
 ) (string, error) {
@@ -67,21 +103,6 @@ func (r *userRetriever) retrieveUserID(ctx context.Context, userRepo UserReposit
 
 	return userID, nil
 }
-
-type OrderHandler struct {
-	userRetriever
-	logger    *slog.Logger
-	orderRepo OrderRepository
-	userRepo  UserRepository
-}
-
-type GeneralHandler struct {
-	db *dbmanager.DBManager
-}
-
-const failedReadBodyMsg = "failed to read the request body"
-const failedCloseBodyMsg = "failed to close the request body"
-
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	data := dto.UserRequest{}
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -498,7 +519,7 @@ func (h *OrderHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *GeneralHandler) Ping(w http.ResponseWriter, r *http.Request) {
+func (h *HealthHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	h.db.Ping(r.Context())
 	if err := h.db.Error(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

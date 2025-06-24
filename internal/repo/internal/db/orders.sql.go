@@ -176,6 +176,35 @@ func (q *Queries) ListWithdrawalsByUser(ctx context.Context, idUser string) ([]L
 	return items, nil
 }
 
+const selectOrdersForProcessing = `-- name: SelectOrdersForProcessing :many
+SELECT name_order FROM accrued_orders
+WHERE id_status IN (
+    SELECT id_status
+    FROM statuses
+    WHERE name_status IN ('NEW', 'PROCESSING')
+)
+`
+
+func (q *Queries) SelectOrdersForProcessing(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, selectOrdersForProcessing)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var name_order string
+		if err := rows.Scan(&name_order); err != nil {
+			return nil, err
+		}
+		items = append(items, name_order)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateAccrualStatus = `-- name: UpdateAccrualStatus :execresult
 UPDATE accrued_orders
 SET id_status=(

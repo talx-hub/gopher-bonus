@@ -4,7 +4,7 @@ sql:
     queries: "db/queries/"
     schema:                                   # DDL-миграции
       - "db/init/*.sql"
-      - "./internal/dbmanager/migrations/*.sql"
+      - "./internal/service/dbmanager/migrations/*.sql"
     gen:
       go:
         package: "db"

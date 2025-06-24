@@ -2,8 +2,7 @@ package workerpool
 
 import (
 	"context"
-	"fmt"
-	"strconv"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -11,8 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/workerpool/mocks"
+	"github.com/talx-hub/gopher-bonus/internal/service/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
@@ -25,15 +24,10 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 		GetOrderInfo(mock.Anything, mock.Anything).
 		RunAndReturn(func(_ context.Context, orderID string) (dto.AccrualInfo, error) {
 			if strings.HasPrefix(orderID, "2") {
-				accrual, err := strconv.ParseFloat(orderID, 64)
-				if err != nil {
-					return dto.AccrualInfo{},
-						fmt.Errorf("unexpected test error: %w", err)
-				}
 				return dto.AccrualInfo{
 					Order:   orderID,
 					Status:  string(dto.StatusCalculatorProcessed),
-					Accrual: accrual,
+					Accrual: json.Number(orderID),
 				}, nil
 			}
 
@@ -49,11 +43,10 @@ func ConfigureMockAccrualClient(t *testing.T) AccrualClient {
 				const multiplier = 2
 				time.Sleep(multiplier * model.DefaultTimeout)
 
-				const accrual = 428
 				return dto.AccrualInfo{
 					Order:   orderID,
 					Status:  string(dto.StatusCalculatorProcessed),
-					Accrual: accrual,
+					Accrual: json.Number(orderID),
 				}, nil
 			}
 

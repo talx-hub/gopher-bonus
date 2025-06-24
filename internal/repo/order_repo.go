@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,7 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/model"
 	"github.com/talx-hub/gopher-bonus/internal/model/order"
 	"github.com/talx-hub/gopher-bonus/internal/repo/internal/db"
+	"github.com/talx-hub/gopher-bonus/internal/service/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 )
 
@@ -258,4 +260,95 @@ func getAmount(ctx context.Context, amountQuery amountQuery, userID string) (mod
 		return model.FromPGNumeric(val) //nolint: wrapcheck // error from wrapped function
 	}
 	return model.NewAmount(0, 0), nil
+}
+
+//nolint:unparam
+func (r *OrderRepository) UpdateAccrualInfoTx(ctx context.Context, updates []dto.AccrualInfo) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	var (
+		sb   strings.Builder
+		args []any
+	)
+
+	sb.WriteString(`
+UPDATE accrued_orders AS ao
+SET
+    id_status = s.id_status,
+    amount = v.amount
+FROM (
+         VALUES
+`)
+
+	const offset = 3
+	for i, u := range updates {
+		orderNoPH := i*offset + 1
+		statusPH := i*offset + 2
+		amountPH := i*offset + 3
+		sb.WriteString(fmt.Sprintf("($%d, $%d, $%d)", orderNoPH, statusPH, amountPH))
+		if i != len(updates) {
+			sb.WriteString(",")
+		}
+		a, err := model.FromString(string(u.Accrual))
+		if err != nil {
+			r.log.LogAttrs(ctx,
+				slog.LevelError,
+				"failed to convert amount from string",
+				slog.String("amount", string(u.Accrual)),
+				slog.Any(model.KeyLoggerError, err),
+			)
+		}
+
+		var realStatus order.Status
+		switch dto.AccrualStatus(u.Status) {
+		case dto.StatusAgentFailed,
+			dto.StatusCalculatorFailed,
+			dto.StatusCalculatorProcessing,
+			dto.StatusCalculatorRegistered:
+			realStatus = order.StatusProcessing
+
+		case dto.StatusCalculatorInvalid:
+			realStatus = order.StatusInvalid
+
+		case dto.StatusCalculatorProcessed,
+			dto.StatusCalculatorNoContent:
+			realStatus = order.StatusProcessed
+		}
+		args = append(args, u.Order, string(realStatus), a.ToPGNumeric())
+	}
+
+	sb.WriteString(`
+     ) AS v(name_order, name_status, amount)
+         JOIN statuses s ON s.name_status = v.name_status
+WHERE ao.name_order = v.name_order;
+`)
+
+	updateTx := func(ctx context.Context, tx connectionPool) (any, error) {
+		_, err := tx.Exec(ctx, sb.String(), args...)
+		return struct{}{}, fmt.Errorf("failed to update accrued orders: %w", err)
+	}
+
+	runWithTX := func() (struct{}, error) {
+		return WithTX[struct{}](ctx, r.pool, r.log, updateTx)
+	}
+
+	_, err := WithRetry[struct{}](runWithTX, 0)
+	if err != nil {
+		return err //nolint: wrapcheck // error from wrapped function
+	}
+	return nil
+}
+
+func (r *OrderRepository) SelectOrdersForProcessing(ctx context.Context) ([]string, error) {
+	selectOrders := func() ([]string, error) {
+		queries := db.New(r.pool)
+		orderNames, err := queries.SelectOrdersForProcessing(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to select orders for accrual calculation: %w", err)
+		}
+		return orderNames, nil
+	}
+	return WithRetry[[]string](selectOrders, 0) //nolint: wrapcheck // error from wrapped function
 }

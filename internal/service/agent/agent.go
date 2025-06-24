@@ -8,24 +8,24 @@ import (
 	"time"
 
 	"github.com/talx-hub/gopher-bonus/internal/model"
-	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/dto"
 	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/httpclient"
 	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/requestwatcher"
 	"github.com/talx-hub/gopher-bonus/internal/service/agent/internal/workerpool"
+	"github.com/talx-hub/gopher-bonus/internal/service/dto"
 	"github.com/talx-hub/gopher-bonus/internal/serviceerrs"
 	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 	"github.com/talx-hub/gopher-bonus/internal/utils/semaphore"
 )
 
 type Agent struct {
-	ordersCh       chan uint64
+	ordersCh       chan string
 	responsesCh    chan<- dto.AccrualInfo
 	accrualAddress string
 	workerCount    int
 }
 
 func New(
-	ordersCh chan uint64,
+	ordersCh chan string,
 	responsesCh chan<- dto.AccrualInfo,
 	accrualAddress string,
 ) *Agent {
@@ -42,8 +42,8 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 	log.LogAttrs(ctx, slog.LevelInfo, "running")
 
 	requestsCh := make(chan struct{}, runtime.NumCPU()*model.DefaultWorkerCountMultiplier)
-	watcher := requestwatcher.New(requestsCh, log)
-	watcher.Start()
+	rpmWatcher := requestwatcher.New(requestsCh, log)
+	rpmWatcher.Start()
 
 	wg := &sync.WaitGroup{}
 	rateDataCh := make(chan serviceerrs.TooManyRequestsError)
@@ -80,20 +80,20 @@ func (a *Agent) Run(ctx context.Context, maxRequestCount uint64) {
 			return
 		case rateData = <-rateDataCh:
 			wg.Wait()
-			watcher.Stop()
+			rpmWatcher.Stop()
 			timer = time.NewTimer(rateData.RetryAfter)
 			log.LogAttrs(ctx,
 				slog.LevelInfo,
 				"paused requesting",
 				slog.Duration("retry_after", rateData.RetryAfter))
 		case <-timer.C:
-			currRPM := watcher.GetRPM()
+			currRPM := rpmWatcher.GetRPM()
 			newMaxRequestCount := maxRequestCount
 			if currRPM != 0 {
 				newMaxRequestCount = rateData.RPM / currRPM
 			}
 
-			watcher.Start()
+			rpmWatcher.Start()
 			pool.ChangeMaxRequests(newMaxRequestCount)
 			poolCancel = pool.Start(ctx, a.workerCount)
 			log.LogAttrs(ctx,

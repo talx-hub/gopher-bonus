@@ -1,12 +1,14 @@
 package router
 
 import (
+	"compress/gzip"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/talx-hub/gopher-bonus/internal/api/middlewares"
 	"github.com/talx-hub/gopher-bonus/internal/service/config"
 )
 
@@ -52,25 +54,33 @@ type Handler interface {
 func (cr *CustomRouter) SetRouter(h Handler) {
 	cr.router.Route("/api/user", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.AllowContentType("application/json"))
-			r.Post("/register", h.Register)
-			r.Post("/login", h.Login)
-		})
+			r.Use(middleware.Compress(gzip.DefaultCompression))
 
-		r.Route("/orders", func(r chi.Router) {
-			r.With(middleware.AllowContentType("text/plain")).
-				Post("/", h.PostOrder)
-			r.Get("/", h.GetOrders)
-		})
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.AllowContentType("application/json"))
+				r.Post("/register", h.Register)
+				r.Post("/login", h.Login)
+			})
 
-		r.Route("/balance", func(r chi.Router) {
-			r.Get("/", h.GetBalance)
-			r.Route("/withdraw", func(r chi.Router) {
-				r.With(middleware.AllowContentType("application/json")).
-					Post("/", h.Withdraw)
+			r.Group(func(r chi.Router) {
+				r.Use(middlewares.Authentication([]byte(cr.cfg.SecretKey), cr.logger))
+
+				r.Route("/orders", func(r chi.Router) {
+					r.With(middleware.AllowContentType("text/plain")).
+						Post("/", h.PostOrder)
+					r.Get("/", h.GetOrders)
+				})
+
+				r.Route("/balance", func(r chi.Router) {
+					r.Get("/", h.GetBalance)
+					r.Route("/withdraw", func(r chi.Router) {
+						r.With(middleware.AllowContentType("application/json")).
+							Post("/", h.Withdraw)
+					})
+				})
+				r.Get("/withdrawals", h.GetWithdrawals)
 			})
 		})
-		r.Get("/withdrawals", h.GetWithdrawals)
 	})
 	cr.router.Get("/ping", h.Ping)
 

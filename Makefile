@@ -2,6 +2,7 @@ include .env
 export
 
 debug:
+	@echo "PWD"=$(pwd)
 	@echo "MIGRATIONS_PATH=$(MIGRATIONS_PATH)"
 	@echo "realpath MIGRATIONS_PATH=$(realpath $(MIGRATIONS_PATH))"
 
@@ -50,6 +51,6 @@ generate:
 
 mocks:
 	docker run --rm \
-		-v $(pwd):/src \
+		-v $(realpath .):/src \
 		-w /src \
 		vektra/mockery:latest

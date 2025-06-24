@@ -50,3 +50,11 @@ SELECT name_order, amount, processed_at
 FROM withdrawn_orders
 WHERE id_user=$1
 ORDER BY processed_at DESC;
+
+-- name: SelectOrdersForProcessing :many
+SELECT name_order FROM accrued_orders
+WHERE id_status IN (
+    SELECT id_status
+    FROM statuses
+    WHERE name_status IN ('NEW', 'PROCESSING')
+);

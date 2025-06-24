@@ -1,5 +1,7 @@
 package dto
 
+import "encoding/json"
+
 type AccrualStatus string
 
 const (
@@ -13,7 +15,7 @@ const (
 )
 
 type AccrualInfo struct {
-	Order   string  `json:"order"`
-	Status  string  `json:"status"`
-	Accrual float64 `json:"accrual,omitempty"`
+	Order   string      `json:"order"`
+	Status  string      `json:"status"`
+	Accrual json.Number `json:"accrual,omitempty"`
 }
