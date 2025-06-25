@@ -1,7 +1,7 @@
 BEGIN TRANSACTION;
 
     CREATE TABLE user_hashes(
-        id_user TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        id_user TEXT PRIMARY KEY UNIQUE,
         hash_login VARCHAR(200) NOT NULL);
 
     CREATE TABLE password_hashes(
@@ -32,7 +32,6 @@ ALTER TABLE user_hashes ADD CONSTRAINT unique_login UNIQUE(hash_login);
 ALTER TABLE user_hashes ADD CONSTRAINT check_hash_login_not_empty
 CHECK (length(trim(hash_login)) > 0);
 
-ALTER TABLE password_hashes ADD CONSTRAINT unique_hash UNIQUE(hash_password);
 ALTER TABLE password_hashes ADD CONSTRAINT check_hash_password_not_empty
 CHECK (length(trim(hash_password)) > 0);
 
