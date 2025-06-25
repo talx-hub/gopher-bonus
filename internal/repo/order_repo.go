@@ -86,7 +86,10 @@ func (r *OrderRepository) FindUserIDByAccrualID(ctx context.Context, accrualID s
 		queries := db.New(r.pool)
 		userID, err := queries.FindOrderByID(ctx, accrualID)
 		if err != nil {
-			return "", fmt.Errorf("failed to find userID by orderID %s: %w", accrualID, err)
+			errNotFound := errors.Join(
+				serviceerrs.ErrNotFound,
+				fmt.Errorf("failed to find userID by orderID %s: %w", accrualID, err))
+			return "", errNotFound
 		}
 		return userID, nil
 	}
