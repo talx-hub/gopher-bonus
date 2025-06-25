@@ -15,21 +15,23 @@ func TestUserRepository_Create(t *testing.T) {
 
 	tests := []struct {
 		name       string
+		idUser     string
 		loginHash  string
 		password   string
 		wantExists bool
 		wantErr    bool
 	}{
-		{"create user1", "user1hash", "user1password-hash", true, false},
-		{"create user2", "user2hash", "user2password-hash", true, false},
-		{"duplicate login", "user1hash", "another-password", true, true},
-		{"empty login", "", "some-password", false, true},
-		{"empty password", "some-new-user", "", false, true},
+		{"create user1", "id1", "user1hash", "user1password-hash", true, false},
+		{"create user2", "id2", "user2hash", "user2password-hash", true, false},
+		{"duplicate login", "id3", "user1hash", "another-password", true, true},
+		{"empty login", "id4", "", "some-password", false, true},
+		{"empty password", "id5", "some-new-user", "", false, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := repo.Create(ctx, &user.User{
+				ID:           tt.idUser,
 				LoginHash:    tt.loginHash,
 				PasswordHash: tt.password,
 			})

@@ -118,14 +118,14 @@ func TestAuthHandler_Register(t *testing.T) {
 			"happy test #1",
 			`"login2"`,
 			`"very-strong-password"`,
-			http.StatusCreated,
+			http.StatusOK,
 			true,
 		},
 		{
 			"happy test #2",
 			`"login3"`,
 			`"very-strong-password"`,
-			http.StatusCreated,
+			http.StatusOK,
 			true,
 		},
 		{

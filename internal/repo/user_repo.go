@@ -26,7 +26,10 @@ func NewUserRepository(pool connectionPool, log *slog.Logger) *UserRepository {
 func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 	createLogic := func(ctx context.Context, tx connectionPool) (any, error) {
 		queries := db.New(tx)
-		id, err := queries.InsertLoginHash(ctx, u.LoginHash)
+		id, err := queries.InsertUser(ctx, db.InsertUserParams{
+			IDUser:    u.ID,
+			HashLogin: u.LoginHash,
+		})
 		if err != nil {
 			return struct{}{}, fmt.Errorf("failed to insert user login hash: %w", err)
 		}

@@ -1,6 +1,6 @@
--- name: InsertLoginHash :one
-INSERT INTO user_hashes (hash_login)
-VALUES ($1)
+-- name: InsertUser :one
+INSERT INTO user_hashes (id_user, hash_login)
+VALUES ($1, $2)
 RETURNING id_user;
 
 -- name: InsertPasswordHash :exec

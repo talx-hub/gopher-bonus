@@ -60,19 +60,6 @@ func (q *Queries) FindUserByLogin(ctx context.Context, hashLogin string) (FindUs
 	return i, err
 }
 
-const insertLoginHash = `-- name: InsertLoginHash :one
-INSERT INTO user_hashes (hash_login)
-VALUES ($1)
-RETURNING id_user
-`
-
-func (q *Queries) InsertLoginHash(ctx context.Context, hashLogin string) (string, error) {
-	row := q.db.QueryRow(ctx, insertLoginHash, hashLogin)
-	var id_user string
-	err := row.Scan(&id_user)
-	return id_user, err
-}
-
 const insertPasswordHash = `-- name: InsertPasswordHash :exec
 INSERT INTO password_hashes (id_user, hash_password)
 VALUES ($1, $2)
@@ -86,4 +73,22 @@ type InsertPasswordHashParams struct {
 func (q *Queries) InsertPasswordHash(ctx context.Context, arg InsertPasswordHashParams) error {
 	_, err := q.db.Exec(ctx, insertPasswordHash, arg.IDUser, arg.HashPassword)
 	return err
+}
+
+const insertUser = `-- name: InsertUser :one
+INSERT INTO user_hashes (id_user, hash_login)
+VALUES ($1, $2)
+RETURNING id_user
+`
+
+type InsertUserParams struct {
+	IDUser    string
+	HashLogin string
+}
+
+func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (string, error) {
+	row := q.db.QueryRow(ctx, insertUser, arg.IDUser, arg.HashLogin)
+	var id_user string
+	err := row.Scan(&id_user)
+	return id_user, err
 }

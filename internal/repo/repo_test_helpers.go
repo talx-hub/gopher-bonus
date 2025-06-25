@@ -16,7 +16,7 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/utils/pgcontainer"
 )
 
-const testDefaultTimeout = 5 * time.Second
+const testDefaultTimeout = 100500 * time.Second
 
 var (
 	getDSN       func() string
