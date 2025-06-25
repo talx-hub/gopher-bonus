@@ -136,11 +136,11 @@ func SetupWorkerPool(t *testing.T,
 	return pool, rateDataCh, requestCountCh, resultCh
 }
 
-func GenerateJobs(t *testing.T, ctx context.Context, s []uint64,
-) chan uint64 {
+func GenerateJobs(t *testing.T, ctx context.Context, s []string,
+) chan string {
 	t.Helper()
 
-	jobs := make(chan uint64, len(s))
+	jobs := make(chan string, len(s))
 
 	go func() {
 		defer close(jobs)
@@ -156,11 +156,11 @@ func GenerateJobs(t *testing.T, ctx context.Context, s []uint64,
 	return jobs
 }
 
-func GenerateInfiniteJobs(t *testing.T, ctx context.Context) chan uint64 {
+func GenerateInfiniteJobs(t *testing.T, ctx context.Context) chan string {
 	t.Helper()
 
 	const bigCapacity = 1024
-	infiniteJobsCh := make(chan uint64, bigCapacity)
+	infiniteJobsCh := make(chan string, bigCapacity)
 
 	go func() {
 		defer close(infiniteJobsCh)
@@ -170,7 +170,7 @@ func GenerateInfiniteJobs(t *testing.T, ctx context.Context) chan uint64 {
 			case <-ctx.Done():
 				return
 			default:
-				infiniteJobsCh <- 200
+				infiniteJobsCh <- "200"
 			}
 		}
 	}()

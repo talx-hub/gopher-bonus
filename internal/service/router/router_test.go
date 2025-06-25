@@ -1,12 +1,16 @@
 package router
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/talx-hub/gopher-bonus/internal/service/config"
+	"github.com/talx-hub/gopher-bonus/internal/utils/auth"
 )
 
 type stubHandler struct {
@@ -47,11 +51,6 @@ func (h) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestCustomRouter_Route_happyTests(t *testing.T) {
-	r := New(nil, nil)
-	r.SetRouter(h{})
-	srv := httptest.NewServer(r.GetRouter())
-	defer srv.Close()
-
 	tests := []struct {
 		method   string
 		path     string
@@ -68,9 +67,17 @@ func TestCustomRouter_Route_happyTests(t *testing.T) {
 		{http.MethodGet, "/ping", "ping", http.StatusTeapot},
 	}
 
+	r := New(&config.Config{}, slog.Default())
+	r.SetRouter(h{})
+	srv := httptest.NewServer(r.GetRouter())
+	defer srv.Close()
+
 	for _, tt := range tests {
 		req, err := http.NewRequest(tt.method, srv.URL+tt.path, http.NoBody)
 		require.NoError(t, err)
+		jwtCookie, err := auth.Authenticate("id", []byte(""))
+		require.NoError(t, err)
+		req.AddCookie(&jwtCookie)
 
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
@@ -83,7 +90,7 @@ func TestCustomRouter_Route_happyTests(t *testing.T) {
 }
 
 func TestCustomRouter_Route_wrong_routes(t *testing.T) {
-	r := New(nil, nil)
+	r := New(&config.Config{}, slog.Default())
 	r.SetRouter(h{})
 	srv := httptest.NewServer(r.GetRouter())
 	defer srv.Close()
@@ -116,6 +123,9 @@ func TestCustomRouter_Route_wrong_routes(t *testing.T) {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
 			req, err := http.NewRequest(tt.method, srv.URL+tt.path, http.NoBody)
 			require.NoError(t, err)
+			jwtCookie, err := auth.Authenticate("id", []byte(""))
+			require.NoError(t, err)
+			req.AddCookie(&jwtCookie)
 
 			resp, err := http.DefaultClient.Do(req)
 			require.NoError(t, err)
