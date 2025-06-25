@@ -1,7 +1,6 @@
 package router
 
 import (
-	"compress/gzip"
 	"log/slog"
 	"net/http"
 
@@ -54,7 +53,7 @@ type Handler interface {
 func (cr *CustomRouter) SetRouter(h Handler) {
 	cr.router.Route("/api/user", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.Compress(gzip.DefaultCompression))
+			//r.Use(middleware.Compress(gzip.DefaultCompression))
 
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.AllowContentType("application/json"))
