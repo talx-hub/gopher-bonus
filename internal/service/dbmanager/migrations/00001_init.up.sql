@@ -19,7 +19,7 @@ BEGIN TRANSACTION;
         name_order VARCHAR(36) NOT NULL,
         uploaded_at timestamp with time zone NOT NULL,
         id_status INT REFERENCES statuses(id_status) NOT NULL,
-        amount DECIMAL(12, 2));
+        amount DECIMAL(12, 2) DEFAULT 0.0);
 
     CREATE TABLE withdrawn_orders(
         id_withdrawn_order INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

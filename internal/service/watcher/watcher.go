@@ -13,7 +13,6 @@ import (
 
 type orderRepo interface {
 	SelectOrdersForProcessing(context.Context) ([]string, error)
-	UpdateAccrualInfoTx(context.Context, []dto.AccrualInfo) error
 	UpdateAccrualStatus(context.Context, *order.Order) error
 }
 
@@ -39,7 +38,6 @@ func (w *Watcher) Run(ctx context.Context) {
 	log := logger.FromContext(ctx).With("service", "watcher")
 	log.LogAttrs(ctx, slog.LevelInfo, "running")
 
-	calculatedBuffer := make([]dto.AccrualInfo, 0)
 	selectTicker := time.NewTicker(model.WatcherTickTimeout)
 	defer selectTicker.Stop()
 
@@ -84,16 +82,43 @@ func (w *Watcher) Run(ctx context.Context) {
 				log.LogAttrs(ctx, slog.LevelInfo, "stopped")
 				return
 			}
-			calculatedBuffer = append(calculatedBuffer, resp)
-			if len(calculatedBuffer) >= model.DefaultChannelCapacity {
-				if err := w.orderRepo.UpdateAccrualInfoTx(ctx, calculatedBuffer); err != nil {
-					log.LogAttrs(ctx,
-						slog.LevelError,
-						"failed to update accrual info",
-						slog.Any(model.KeyLoggerError, err),
-					)
-				}
-				calculatedBuffer = calculatedBuffer[:0]
+			var realStatus order.Status
+			switch dto.AccrualStatus(resp.Status) {
+			case dto.StatusAgentFailed,
+				dto.StatusCalculatorFailed,
+				dto.StatusCalculatorProcessing,
+				dto.StatusCalculatorRegistered:
+				realStatus = order.StatusProcessing
+
+			case dto.StatusCalculatorInvalid:
+				realStatus = order.StatusInvalid
+
+			case dto.StatusCalculatorProcessed,
+				dto.StatusCalculatorNoContent:
+				realStatus = order.StatusProcessed
+			}
+
+			a, err := model.FromString(string(resp.Accrual))
+			if err != nil {
+				log.LogAttrs(ctx,
+					slog.LevelError,
+					"failed to convert amount from string",
+					slog.String("amount", string(resp.Accrual)),
+					slog.Any(model.KeyLoggerError, err),
+				)
+			}
+
+			o := order.Order{
+				ID:     resp.Order,
+				Status: realStatus,
+				Amount: a,
+			}
+			if err := w.orderRepo.UpdateAccrualStatus(ctx, &o); err != nil {
+				log.LogAttrs(ctx,
+					slog.LevelError,
+					"failed to update accrual info",
+					slog.Any(model.KeyLoggerError, err),
+				)
 			}
 		}
 	}

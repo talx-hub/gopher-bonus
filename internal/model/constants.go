@@ -5,7 +5,7 @@ import "time"
 const DefaultTimeout = 500 * time.Millisecond
 const DefaultWorkerCountMultiplier = 2
 const DefaultRequestCount = 100500
-const DefaultChannelCapacity = 1024
+const DefaultChannelCapacity = 1
 
 const WatcherTickTimeout = 3 * time.Second
 
