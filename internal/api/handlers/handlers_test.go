@@ -945,6 +945,8 @@ func TestOrderHandler_Withdraw(t *testing.T) {
 			rr := httptest.NewRecorder()
 			h.Withdraw(rr, req)
 			res := rr.Result()
+			err := res.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantCode, res.StatusCode)
 		})
@@ -1061,6 +1063,8 @@ func TestOrderHandler_GetWithdrawals(t *testing.T) {
 			rr := httptest.NewRecorder()
 			h.GetWithdrawals(rr, req)
 			res := rr.Result()
+			err = res.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantCode, res.StatusCode)
 		})
