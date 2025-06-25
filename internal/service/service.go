@@ -62,6 +62,11 @@ func initService(log *slog.Logger) (*chi.Mux, context.CancelFunc, string) {
 	outputCh := make(chan dto.AccrualInfo)
 	w := watcher.New(orderRepo, inputCh, outputCh)
 	go w.Run(loggerCtx)
+	log.LogAttrs(ctx,
+		slog.LevelInfo,
+		"accrual addr",
+		slog.String("addr", cfg.AccrualAddr),
+	)
 	a := agent.New(inputCh, outputCh, cfg.AccrualAddr)
 	go a.Run(loggerCtx, model.DefaultRequestCount)
 
@@ -82,7 +87,6 @@ func initService(log *slog.Logger) (*chi.Mux, context.CancelFunc, string) {
 func RunServer() {
 	log := slog.Default()
 	mux, cancel, addr := initService(log)
-	defer cancel()
 	if mux == nil {
 		log.LogAttrs(context.TODO(),
 			slog.LevelError,
@@ -90,6 +94,7 @@ func RunServer() {
 		)
 		return
 	}
+	defer cancel()
 
 	log.LogAttrs(context.Background(),
 		slog.LevelInfo,

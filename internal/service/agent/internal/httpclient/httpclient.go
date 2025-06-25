@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -33,16 +32,10 @@ func New(accrualAddress string) *HTTPClient {
 
 func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 ) (dto.AccrualInfo, error) {
-	path := url.URL{
-		Scheme: "http",
-		Host:   c.accrualAddress,
-		Path:   "/api/orders/" + orderID,
-	}
-
 	tCtx, cancel := context.WithTimeout(ctx, model.DefaultTimeout)
 	defer cancel()
 	request, err := http.NewRequestWithContext(
-		tCtx, http.MethodGet, path.String(), http.NoBody)
+		tCtx, http.MethodGet, c.accrualAddress+"/api/orders"+orderID, http.NoBody)
 	if err != nil {
 		return dto.AccrualInfo{},
 			fmt.Errorf("failed to create the request: %w", err)
