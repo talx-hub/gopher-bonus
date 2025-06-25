@@ -338,6 +338,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set(model.HeaderContentType, "application/json")
 	if err = json.NewEncoder(w).Encode(orders); err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
@@ -347,8 +348,6 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(model.HeaderContentType, "application/json")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *OrderHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -375,6 +374,7 @@ func (h *OrderHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set(model.HeaderContentType, "application/json")
 	if err = json.NewEncoder(w).Encode(
 		dto.BalanceResponse{
 			Current:   json.Number(currentSum.String()),
@@ -388,8 +388,6 @@ func (h *OrderHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(model.HeaderContentType, "application/json")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *OrderHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
@@ -506,6 +504,7 @@ func (h *OrderHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set(model.HeaderContentType, "application/json")
 	if err = json.NewEncoder(w).Encode(withdrawals); err != nil {
 		h.logger.LogAttrs(r.Context(),
 			slog.LevelError,
@@ -515,8 +514,6 @@ func (h *OrderHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, serviceerrs.ErrUnexpected.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(model.HeaderContentType, "application/json")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *HealthHandler) Ping(w http.ResponseWriter, r *http.Request) {
