@@ -141,6 +141,7 @@ func listAccruals(ctx context.Context,
 			ID:        or.NameOrder,
 			UserID:    userID,
 			Amount:    accrual,
+			Type:      order.TypeAccrual,
 		}
 	}
 
@@ -173,6 +174,7 @@ func listWithdrawals(ctx context.Context,
 			ID:        or.NameOrder,
 			UserID:    userID,
 			Amount:    withdrew,
+			Type:      order.TypeWithdrawal,
 		}
 	}
 
