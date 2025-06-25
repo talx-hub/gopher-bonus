@@ -1,0 +1,45 @@
+{
+    "order": "9278923470",
+    "goods": [
+        {
+            "description": "Чайник Bork",
+            "price": 7000
+        },
+        {
+            "description": "Чайник Tefal",
+            "price": 9500
+        }
+    ]
+}
+
+{
+        "order": "12345678903",
+        "goods": [
+        {
+            "description": "Ariston",
+            "price": 37000
+        },
+        {
+            "description": "Сковорода Tefal",
+            "price": 2500
+        },
+        {
+            "description": "Dell",
+            "price": 25000
+        }
+        ]
+}
+
+{
+    "order": "346436439",
+    "goods": [
+        {
+            "description": "Кондиционер Бирюса",
+            "price": 37000
+        },
+        {
+            "description": "Холодильник Бирюса",
+            "price": 12500
+        }
+    ]
+}
