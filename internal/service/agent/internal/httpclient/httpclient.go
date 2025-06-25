@@ -35,7 +35,7 @@ func (c *HTTPClient) GetOrderInfo(ctx context.Context, orderID string,
 	tCtx, cancel := context.WithTimeout(ctx, model.DefaultTimeout)
 	defer cancel()
 	request, err := http.NewRequestWithContext(
-		tCtx, http.MethodGet, c.accrualAddress+"/api/orders"+orderID, http.NoBody)
+		tCtx, http.MethodGet, c.accrualAddress+"/api/orders/"+orderID, http.NoBody)
 	if err != nil {
 		return dto.AccrualInfo{},
 			fmt.Errorf("failed to create the request: %w", err)
@@ -113,11 +113,11 @@ func (c *HTTPClient) handleRequestData(resp *http.Response, body []byte,
 			}
 	case http.StatusInternalServerError:
 		return dto.AccrualInfo{},
-			fmt.Errorf("accrual service error\nBody: %s", string(body))
+			fmt.Errorf("accrual service error Body: %s", string(body))
 	}
 
 	return dto.AccrualInfo{},
-		fmt.Errorf("unexpected status: %d\nBody: %s",
+		fmt.Errorf("unexpected status: %d Body: %q",
 			resp.StatusCode, string(body))
 }
 
