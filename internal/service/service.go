@@ -17,12 +17,10 @@ import (
 	"github.com/talx-hub/gopher-bonus/internal/service/dto"
 	"github.com/talx-hub/gopher-bonus/internal/service/router"
 	"github.com/talx-hub/gopher-bonus/internal/service/watcher"
+	"github.com/talx-hub/gopher-bonus/internal/utils/logger"
 )
 
-func initService(log *slog.Logger) (*chi.Mux, string) {
-	inputCh := make(chan string)
-	outputCh := make(chan dto.AccrualInfo)
-
+func initService(log *slog.Logger) (*chi.Mux, context.CancelFunc, string) {
 	cfg := config.NewBuilder(log).
 		FromEnv().
 		FromFlags().
@@ -41,7 +39,7 @@ func initService(log *slog.Logger) (*chi.Mux, string) {
 			"failed to start service: db connection error",
 			slog.Any(model.KeyLoggerError, err),
 		)
-		return nil, ""
+		return nil, nil, ""
 	}
 
 	db, err := dbManager.GetPool(ctx)
@@ -51,18 +49,21 @@ func initService(log *slog.Logger) (*chi.Mux, string) {
 			"failed to start service: failed to get DB pool",
 			slog.Any(model.KeyLoggerError, err),
 		)
-		return nil, ""
+		return nil, nil, ""
 	}
 
 	usersRepo := repo.NewUserRepository(db, log)
 	orderRepo := repo.NewOrderRepository(db, log)
 
 	ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
+	loggerCtx := logger.WithContext(ctx, log)
+
+	inputCh := make(chan string)
+	outputCh := make(chan dto.AccrualInfo)
 	w := watcher.New(orderRepo, inputCh, outputCh)
-	w.Run(ctx)
+	go w.Run(loggerCtx)
 	a := agent.New(inputCh, outputCh, cfg.AccrualAddr)
-	a.Run(ctx, model.DefaultRequestCount)
+	go a.Run(loggerCtx, model.DefaultRequestCount)
 
 	rr := router.New(cfg, log)
 	rr.SetRouter(&struct {
@@ -75,12 +76,13 @@ func initService(log *slog.Logger) (*chi.Mux, string) {
 		HealthHandler: handlers.NewHealthHandler(dbManager),
 	})
 
-	return rr.GetRouter(), cfg.RunAddr
+	return rr.GetRouter(), cancel, cfg.RunAddr
 }
 
 func RunServer() {
 	log := slog.Default()
-	mux, addr := initService(log)
+	mux, cancel, addr := initService(log)
+	defer cancel()
 	if mux == nil {
 		log.LogAttrs(context.TODO(),
 			slog.LevelError,
@@ -89,6 +91,11 @@ func RunServer() {
 		return
 	}
 
+	log.LogAttrs(context.Background(),
+		slog.LevelInfo,
+		"starting server.....",
+		slog.String("addr", addr),
+	)
 	err := http.ListenAndServe(addr, mux)
 	if err != nil {
 		log.LogAttrs(context.TODO(),
