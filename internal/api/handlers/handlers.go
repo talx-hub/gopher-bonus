@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/ShiraazMoollatjie/goluhn"
 	"github.com/google/uuid"
 
 	"github.com/talx-hub/gopher-bonus/internal/api/dto"
@@ -253,6 +254,11 @@ func (h *OrderHandler) PostOrder(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 	orderID := string(body)
+	if err = goluhn.Validate(orderID); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
 	for _, rn := range orderID {
 		if !unicode.IsDigit(rn) {
 			http.Error(w, "order ID must contain only digits", http.StatusBadRequest)

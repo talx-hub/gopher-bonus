@@ -3,6 +3,7 @@ module github.com/talx-hub/gopher-bonus
 go 1.24.2
 
 require (
+	github.com/ShiraazMoollatjie/goluhn v0.0.0-20211017190329-0d86158c056a
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
