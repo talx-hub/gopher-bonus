@@ -1,0 +1,36 @@
+
+{
+    "match": "Tefal",
+    "reward": 10,
+    "reward_type": "%"
+}
+
+{
+    "match": "Ariston",
+    "reward": 5,
+    "reward_type": "%"
+}
+
+{
+    "match": "Indesit",
+    "reward": 15,
+    "reward_type": "%"
+}
+
+{
+    "match": "Dell",
+    "reward": 3,
+    "reward_type": "%"
+}
+
+{
+    "match": "Bork",
+    "reward": 4,
+    "reward_type": "%"
+}
+
+{
+    "match": "Бирюса",
+    "reward": 20,
+    "reward_type": "%"
+}

@@ -1,0 +1,13 @@
+template: testify
+recursive: true
+dir: '{{.InterfaceDir}}/mocks'
+filename: 'mock_{{.InterfaceName}}.go'
+structname: "Mock{{.InterfaceName}}"
+pkgname: mocks
+packages:
+  github.com/talx-hub/gopher-bonus/internal/agent/:
+    config:
+      all: true
+  github.com/talx-hub/gopher-bonus/internal/api/:
+    config:
+      all: true

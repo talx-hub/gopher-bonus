@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "db/queries/"
+    schema:                                   # DDL-миграции
+      - "db/init/*.sql"
+      - "./internal/service/dbmanager/migrations/*.sql"
+    gen:
+      go:
+        package: "db"
+        out: "internal/repo/internal/db"
+        sql_package: "pgx/v5"

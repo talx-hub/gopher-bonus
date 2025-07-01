@@ -1,0 +1,59 @@
+[
+  {
+    "name": "successful get orders",
+    "responses": [
+      {
+      "number": "1",
+      "status": "PROCESSED",
+      "accrual": 105.00,
+      "uploaded_at": "1999-01-01T03:00:00+03:00"
+      },
+    {
+      "number": "2",
+      "status": "PROCESSED",
+      "accrual": 100.05,
+      "uploaded_at": "2025-06-21T11:58:45+03:00"
+    },
+    {
+      "number": "3",
+      "status": "PROCESSED",
+      "accrual": 100.51,
+      "uploaded_at": "2025-06-25T03:00:00+03:00"
+    },
+    {
+      "number": "4",
+      "status": "PROCESSED",
+      "accrual": 100.99,
+      "uploaded_at": "2025-06-26T06:00:00+03:00"
+    },
+    {
+      "number": "5",
+      "status": "PROCESSED",
+      "accrual": 100.01,
+      "uploaded_at": "1999-01-01T03:00:00+03:00"
+    },
+    {
+      "number": "6",
+      "status": "PROCESSED",
+      "accrual": 101.00,
+      "uploaded_at": "2025-06-21T11:58:45+03:00"
+    },
+    {
+      "number": "7",
+      "status": "PROCESSING",
+      "uploaded_at": "2025-06-25T03:00:00+03:00"
+    },
+    {
+      "number": "8",
+      "status": "NEW",
+      "uploaded_at": "2025-06-26T06:00:00+03:00"
+    },
+    {
+      "number": "9",
+      "status": "INVALID",
+      "uploaded_at": "1999-01-01T03:00:00+03:00"
+    }
+  ]
+  }
+]
+
